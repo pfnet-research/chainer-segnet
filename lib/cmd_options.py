@@ -45,7 +45,7 @@ def get_args():
         '--batchsize', type=int, default=64,
         help='minibatch size')
     parser.add_argument(
-        '--snapshot_iter', type=int, default=10000,
+        '--snapshot_iter', type=int, default=1000,
         help='The current learnt parameters in the model is saved every'
              'this iteration')
     parser.add_argument(
@@ -96,6 +96,9 @@ def get_args():
                 '0.6823,6.2478,7.3614',
         help='Weights for classes used in softmax cross entropy loss '
              'calculation')
+    parser.add_argument(
+        '--ignore_labels', type=str, default='11',
+        help='The label id that is ignored during training')
 
     # Dataset paths
     parser.add_argument(
@@ -123,7 +126,7 @@ def get_args():
         choices=['MomentumSGD', 'Adam', 'AdaGrad', 'RMSprop'],
         help='Optimization method')
     parser.add_argument('--weight_decay', type=float, default=0.0005)
-    parser.add_argument('--adam_alpha', type=float, default=0.00001)
+    parser.add_argument('--adam_alpha', type=float, default=0.001)
     parser.add_argument('--adam_beta1', type=float, default=0.9)
     parser.add_argument('--adam_beta2', type=float, default=0.999)
     parser.add_argument('--adam_eps', type=float, default=1e-8)
@@ -142,4 +145,5 @@ def get_args():
     xp = chainer.cuda.cupy if chainer.cuda.available else numpy
     xp.random.seed(args.seed)
     numpy.random.seed(args.seed)
+    args.ignore_labels = [int(l) for l in args.ignore_labels.split(',')]
     return args

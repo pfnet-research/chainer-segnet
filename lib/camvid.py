@@ -26,7 +26,7 @@ class CamVid(dataset_mixin.DatasetMixin):
 
     def __init__(self, img_dir, lbl_dir, list_fn, mean, std, shift_jitter=0,
                  scale_jitter=0, fliplr=False, rotate=None, rotate_max=7,
-                 scale=1.0):
+                 scale=1.0, ignore_labels=[11]):
         self.scale = scale
         self.lbl_fns = []
         self.img_fns = []
@@ -41,6 +41,7 @@ class CamVid(dataset_mixin.DatasetMixin):
         self.fliplr = fliplr
         self.rotate = rotate
         self.rotate_max = rotate_max
+        self.ignore_labels = ignore_labels
 
     def __len__(self):
         return len(self.img_fns)
@@ -58,6 +59,9 @@ class CamVid(dataset_mixin.DatasetMixin):
         if self.scale != 1.0:
             lbl = cv.resize(lbl, None, fx=self.scale, fy=self.scale,
                             interpolation=cv.INTER_NEAREST)
+        if self.ignore_labels is not None:
+            for ignore_l in self.ignore_labels:
+                lbl[np.where(lbl == ignore_l)] = -1
         img_size = (lbl.shape[1], lbl.shape[0])  # W, H
 
         if self.shift_jitter != 0:
