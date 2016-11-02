@@ -88,6 +88,9 @@ def get_args():
         '--std', type=str, default=None,
         help='Stddev npy over the training data')
     parser.add_argument(
+        '--use_class_weights', action='store_true', default=False,
+        help='If it\'s given, the loss is weighted during training.')
+    parser.add_argument(
         '--class_weights', type=str,
         default='0.2595,0.1826,4.5640,0.1417,0.9051,0.3826,9.6446,1.8418,'
                 '0.6823,6.2478,7.3614',

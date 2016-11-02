@@ -75,6 +75,7 @@ class SegNetLoss(chainer.Chain):
             class_weights = F.expand_dims(class_weights, 2)
             self.class_weights = F.expand_dims(class_weights, 3)
             assert(self.class_weights.shape == (1, model.n_classes, 1, 1))
+            print('The loss is weighted by this: {}'.format(class_weights))
 
     def __call__(self, x, t):
         y = self.predictor(x)

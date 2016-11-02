@@ -26,7 +26,8 @@ if __name__ == '__main__':
     # Instantiate model
     model = get_model(
         args.model_file, args.model_name, args.loss_file, args.loss_name,
-        args.n_classes, args.class_weights, True, result_dir)
+        args.n_classes, args.class_weights if args.use_class_weights else None,
+        True, result_dir)
 
     # Initialize optimizer
     optimizer = get_optimizer(
