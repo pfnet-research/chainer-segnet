@@ -42,10 +42,10 @@ def get_args():
         '--gpus', type=str, default='0',
         help='GPU Ids to be used')
     parser.add_argument(
-        '--batchsize', type=int, default=32,
+        '--batchsize', type=int, default=64,
         help='minibatch size')
     parser.add_argument(
-        '--snapshot_iter', type=int, default=100,
+        '--snapshot_iter', type=int, default=10000,
         help='The current learnt parameters in the model is saved every'
              'this iteration')
     parser.add_argument(
@@ -79,7 +79,7 @@ def get_args():
         '--scale', type=float, default=1.0,
         help='Scale for the input images and label images')
     parser.add_argument(
-        '--n_classes', type=int, default=11,
+        '--n_classes', type=int, default=12,
         help='The number of classes that the model predicts')
     parser.add_argument(
         '--mean', type=str, default=None,

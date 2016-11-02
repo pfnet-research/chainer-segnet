@@ -9,8 +9,27 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from lib import CamVid
 
+import numpy as np
 import os
 import cv2 as cv
+
+Sky = [128, 128, 128]
+Building = [128, 0, 0]
+Pole = [192, 192, 128]
+Road_marking = [255, 69, 0]
+Road = [128, 64, 128]
+Pavement = [60, 40, 222]
+Tree = [128, 128, 0]
+SignSymbol = [192, 128, 128]
+Fence = [64, 64, 128]
+Car = [64, 0, 128]
+Pedestrian = [64, 64, 0]
+Bicyclist = [0, 128, 192]
+Unlabelled = [0, 0, 0]
+
+colors = [Sky, Building, Pole, Road, Pavement, Tree, SignSymbol, Fence,
+          Car, Pedestrian, Bicyclist, Unlabelled]
+
 
 if __name__ == '__main__':
     img_dir = 'data/train'
@@ -30,9 +49,16 @@ if __name__ == '__main__':
     out_dir = 'tests/out'
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
-    for i in range(100):
+    for i in range(len(camvid)):
         img, lbl = camvid[i]
+        lbl_ids = np.unique(lbl)
         img = img.transpose(1, 2, 0)
+        print(img.shape, lbl.shape, lbl_ids)
         cv.imwrite('{}/{}_img.png'.format(out_dir, i), img)
-        cv.imwrite('{}/{}_lbl.png'.format(out_dir, i), lbl * 20)
-        print(img.shape, lbl.shape)
+        out_lbl = np.zeros_like(img)
+        for k in range(12):
+            out_lbl[np.where(lbl == k)] = colors[k]
+        cv.imwrite('{}/{}_lbl.png'.format(out_dir, i), out_lbl)
+        assert len(lbl_ids) <= 12
+        assert lbl_ids.min() >= 0
+        assert lbl_ids.max() <= 11
