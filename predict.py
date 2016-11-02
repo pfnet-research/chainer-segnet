@@ -34,7 +34,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_file', type=str, default='models/segnet.py')
     parser.add_argument('--model_name', type=str, default='SegNet')
-    parser.add_argument('--n_classes', type=int, default=32)
+    parser.add_argument('--n_classes', type=int, default=12)
     parser.add_argument('--snapshot', type=str)
     parser.add_argument('--img_dir', type=str, default='data/test')
     parser.add_argument('--out_dir', type=str)
