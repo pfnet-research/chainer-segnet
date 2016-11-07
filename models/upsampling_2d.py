@@ -1,54 +1,44 @@
+# Copyright (c) 2016 Shunta Saito
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 from chainer import cuda
-from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
 from chainer.utils import type_check
 
+import chainer
+import itertools
+import numpy as np
 
-class Upsampling2D(pooling_2d.Pooling2D):
 
-    """Upsampling over a set of 2d planes using max pooling bins."""
+class Upsampling2D(chainer.Function):
 
-    def __init__(self, ksize, stride=None, pad=0, outsize=None,
-                 cover_all=True):
-        super(Upsampling2D, self).__init__(ksize, stride, pad, cover_all)
-        self.outh, self.outw = (None, None) if outsize is None else outsize
+    """Upsampling over a set of 2d planes w/ indices used for max pooling."""
 
-    def check_type_forward(self, in_types):
-        n_in = in_types.size()
-        type_check.expect(n_in == 1)
-        x_type = in_types[0]
+    def __init__(self, pooler, outsize):
+        self.p = pooler
+        self.outsize = outsize
 
-        type_check.expect(
-            x_type.dtype.kind == 'f',
-            x_type.ndim == 4,
-        )
+    def forward_cpu(self, x):
+        n, c, h, w, oh, ow = x[0].shape + self.outsize
+        print(n, c, h, w, oh, ow)
+        y = np.zeros((n, c, oh, ow), dtype=np.float32)
+        y = conv.im2col_cpu(y, self.p.kh, self.p.kw, self.p.sy, self.p.sx,
+                            self.p.ph, self.p.pw)
+        rs = list(y.shape)
+        y = y.reshape(rs[:2] + [-1] + rs[4:])
+        inds = np.asarray(list(itertools.product(np.arange(h), np.arange(w))))
+        inds = np.tile(inds, (n * c, 1))
+        nc = np.asarray(list(itertools.product(np.arange(n), np.arange(c))))
+        pos = self.p.indexes[nc[:, 0], nc[:, 1], :, :].ravel()
+        nc = np.repeat(nc, np.prod(self.p.indexes.shape[2:]), axis=0)
+        y[nc[:, 0], nc[:, 1], pos, inds[:, 0], inds[:, 1]] = x[0].ravel()
+        y = y.reshape(rs)
+        y = conv.col2im_cpu(y, self.p.sy, self.p.sx, self.p.ph, self.p.pw,
+                            self.outsize[0], self.outsize[1])
 
-        if self.outh is not None:
-            expected_h = conv.get_conv_outsize(
-                self.outh, self.kh, self.sy, self.ph, cover_all=self.cover_all)
-            type_check.expect(x_type.shape[2] == expected_h)
-        if self.outw is not None:
-            expected_w = conv.get_conv_outsize(
-                self.outw, self.kw, self.sx, self.pw, cover_all=self.cover_all)
-            type_check.expect(x_type.shape[3] == expected_w)
-
-    def forward(self, x):
-        h, w = x[0].shape[2:]
-        if self.outh is None:
-            self.outh = conv.get_deconv_outsize(
-                h, self.kh, self.sy, self.ph, cover_all=self.cover_all)
-        if self.outw is None:
-            self.outw = conv.get_deconv_outsize(
-                w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
-        xp = cuda.get_array_module(*x)
-        col = xp.tile(x[0][:, :, None, None],
-                      (1, 1, self.kh, self.kw, 1, 1))
-        if isinstance(x[0], cuda.ndarray):
-            y = conv.col2im_gpu(col, self.sy, self.sx, self.ph, self.pw,
-                                self.outh, self.outw)
-        else:
-            y = conv.col2im_cpu(col, self.sy, self.sx, self.ph, self.pw,
-                                self.outh, self.outw)
         return y,
 
     def backward(self, x, gy):
@@ -64,39 +54,19 @@ class Upsampling2D(pooling_2d.Pooling2D):
         return gx,
 
 
-def unpooling_2d(x, ksize, stride=None, pad=0, outsize=None, cover_all=True):
-    """Inverse operation of pooling for 2d array.
+def upsampling_2d(x, pooler, outsize):
+    """Upsampling using pooling indices.
 
-    This function acts similarly to :class:`~functions.Deconvolution2D`, but
-    it spreads input 2d array's value without any parameter instead of
-    computing the inner products.
+    This function produces an upsampled image using pooling indices.
 
     Args:
         x (~chainer.Variable): Input variable.
-        ksize (int or pair of ints): Size of pooling window. ``ksize=k`` and
-            ``ksize=(k, k)`` are equivalent.
-        stride (int, pair of ints or None): Stride of pooling applications.
-            ``stride=s`` and ``stride=(s, s)`` are equivalent. If ``None`` is
-            specified, then it uses same stride as the pooling window size.
-        pad (int or pair of ints): Spatial padding width for the input array.
-            ``pad=p`` and ``pad=(p, p)`` are equivalent.
-        outsize (None or pair of ints): Expected output size (height, width)
-            of array after the operation.  If ``None``, the size
-            (height or width) is estimated from the size of input array
-            in first batch with
-            :func:`~chainer.utils.conv.get_deconv_outsize`.
-            If outsize is not ``None``, the result of outsize applied to
-            :func:`~chainer.utils.conv.get_conv_outsize` must be equal to
-            the shape of the 2d array in the input batch ``x``.
-        cover_all (bool): If ``True``, the output size may be smaller than
-            the size if ``cover_all`` is ``False``. This flag serves to
-            align behavior to the pooling functions which can cover all
-            input locations, see :func:`~chainer.functions.max_pooling_2d`
-            and :func:`~chainer.functions.convolution_2d`.
-
+        pooler (~chainer.functions.Pooling2D): Pooling2D object that is used
+            to produce x, the first arg. e.g., An object of MaxPooling2D.
+        outsize (pair of ints): Expected output size (height, width).
 
     Returns:
         ~chainer.Variable: Output variable.
 
     """
-    return Unpooling2D(ksize, stride, pad, outsize, cover_all)(x)
+    return Upsampling2D(pooler, outsize)(x)

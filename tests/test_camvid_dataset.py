@@ -9,9 +9,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from lib import CamVid
 
+import cv2 as cv
 import numpy as np
 import os
-import cv2 as cv
 
 Sky = [128, 128, 128]
 Building = [128, 0, 0]
@@ -60,5 +60,5 @@ if __name__ == '__main__':
             out_lbl[np.where(lbl == k)] = colors[k]
         cv.imwrite('{}/{}_lbl.png'.format(out_dir, i), out_lbl)
         assert len(lbl_ids) <= 12
-        assert lbl_ids.min() >= 0
+        assert lbl_ids.min() >= -1
         assert lbl_ids.max() <= 11

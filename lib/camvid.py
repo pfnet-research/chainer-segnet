@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 # Copyright (c) 2016 Shunta Saito
 
 from __future__ import absolute_import
@@ -42,6 +39,7 @@ class CamVid(dataset_mixin.DatasetMixin):
         self.rotate = rotate
         self.rotate_max = rotate_max
         self.ignore_labels = ignore_labels
+        print('Ignore labels: {}'.format(self.ignore_labels))
 
     def __len__(self):
         return len(self.img_fns)
@@ -55,7 +53,7 @@ class CamVid(dataset_mixin.DatasetMixin):
         if self.scale != 1.0:
             img = cv.resize(img, None, fx=self.scale, fy=self.scale,
                             interpolation=cv.INTER_NEAREST)
-        lbl = cv.imread(self.lbl_fns[i], cv.IMREAD_GRAYSCALE)
+        lbl = cv.imread(self.lbl_fns[i], cv.IMREAD_GRAYSCALE).astype(np.int32)
         if self.scale != 1.0:
             lbl = cv.resize(lbl, None, fx=self.scale, fy=self.scale,
                             interpolation=cv.INTER_NEAREST)

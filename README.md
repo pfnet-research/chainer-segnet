@@ -1,6 +1,14 @@
 # SegNet
 SegNet implementation &amp; experiments written in Chainer
 
+## Requirements
+
+- Python
+- Chainer 1.17.0+
+- scikit-learn
+- NumPy
+- OpenCV
+
 ## Download
 
 ```
