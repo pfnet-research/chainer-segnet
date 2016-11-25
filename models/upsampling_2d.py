@@ -1,16 +1,16 @@
 # Copyright (c) 2016 Shunta Saito
 
-from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
 from chainer import cuda
 from chainer.utils import conv
 from chainer.utils import type_check
 
 import chainer
+import cupy
 import itertools
 import numpy as np
+import six
 
 
 class Upsampling2D(chainer.Function):
@@ -22,8 +22,8 @@ class Upsampling2D(chainer.Function):
         self.outsize = outsize
 
     def forward_cpu(self, x):
-        n, c, h, w, oh, ow = x[0].shape + self.outsize
-        print(n, c, h, w, oh, ow)
+        n, c, h, w = x[0].shape
+        oh, ow = self.outsize
         y = np.zeros((n, c, oh, ow), dtype=np.float32)
         y = conv.im2col_cpu(y, self.p.kh, self.p.kw, self.p.sy, self.p.sx,
                             self.p.ph, self.p.pw)
@@ -38,19 +38,56 @@ class Upsampling2D(chainer.Function):
         y = y.reshape(rs)
         y = conv.col2im_cpu(y, self.p.sy, self.p.sx, self.p.ph, self.p.pw,
                             self.outsize[0], self.outsize[1])
-
         return y,
 
-    def backward(self, x, gy):
-        if isinstance(gy[0], cuda.ndarray):
-            gcol = conv.im2col_gpu(
-                gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
-                cover_all=self.cover_all)
-        else:
-            gcol = conv.im2col_cpu(
-                gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
-                cover_all=self.cover_all)
-        gx = gcol.sum(axis=(2, 3))
+    def forward_gpu(self, x):
+        xp = cupy
+        n, c, h, w = x[0].shape
+        oh, ow = self.outsize
+        y = xp.zeros((n, c, oh, ow), dtype=xp.float32)
+        y = conv.im2col_gpu(y, self.p.kh, self.p.kw, self.p.sy, self.p.sx,
+                            self.p.ph, self.p.pw)
+        y = y.transpose(0, 1, 4, 5, 2, 3)
+        yn, yc, ykh, ykw, ysh, ysw = y.shape
+        indexes = xp.asarray(self.p.indexes, dtype=xp.int32)
+
+        cupy.ElementwiseKernel(
+            'int32 indexes, float32 x, int32 yn, int32 yc, int32 ykh,'
+            'int32 ykw, int32 ysh, int32 ysw',
+            'raw float32 y',
+            '''
+            int yn_i = i / yc / ykh / ykw;
+            int yc_i = (i / ykh / ykw) % yc;
+            int yy_i = (i / ykw) % ykh;
+            int yx_i = i % ykw;
+            y[yn_i * yc * ykh * ykw * ysh * ysw +
+              yc_i * ykh * ykw * ysh * ysw +
+              yy_i * ykw * ysh * ysw +
+              yx_i * ysh * ysw +
+              indexes] = x;
+            ''',
+            'upsampling_2d_fwd')(indexes, x[0], yn, yc, ykh, ykw, ysh, ysw, y)
+        y = y.transpose(0, 1, 4, 5, 2, 3)
+        y = conv.col2im_gpu(y, self.p.sy, self.p.sx, self.p.ph, self.p.pw,
+                            self.outsize[0], self.outsize[1])
+        return y,
+
+    def backward_cpu(self, x, gy):
+        gcol = conv.im2col_cpu(
+            gy[0], self.p.kh, self.p.kw, self.p.sy,
+            self.p.sx, self.p.ph, self.p.pw)
+
+        gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
+        n, c, ky, kx, sy, sx = gcol.shape
+        gcol = gcol.reshape((n, c, ky, kx, sy * sx))
+        gx = np.empty((n, c, ky, kx), dtype=x[0].dtype)
+        for n in six.moves.range(gcol.shape[0]):
+            for c in six.moves.range(gcol.shape[1]):
+                for ky in six.moves.range(gcol.shape[2]):
+                    for kx in six.moves.range(gcol.shape[3]):
+                        gx[n, c, ky, kx] = \
+                            gcol[n, c, ky, kx][self.p.indexes[n, c, ky, kx]]
+
         return gx,
 
 
