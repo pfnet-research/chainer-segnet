@@ -29,8 +29,6 @@ import unittest
     {'in_shape': (2, 4, 8, 8)},
     {'in_shape': (2, 4, 10, 10)},
     {'in_shape': (2, 4, 10, 12)},
-    # {'in_shape': (2, 3, 7, 7)},
-    # {'in_shape': (2, 4, 5, 6)},
 )
 class TestUpsampling2D(unittest.TestCase):
 
@@ -52,8 +50,6 @@ class TestUpsampling2D(unittest.TestCase):
         else:
             y = conv.im2col_gpu(y.data, self.p.kh, self.p.kw,
                                 self.p.sy, self.p.sx, self.p.ph, self.p.pw)
-        # print('y:', y)
-        # print('pooled_y:', self.pooled_y.data)
         for n in six.moves.range(y.shape[0]):
             for c in six.moves.range(y.shape[1]):
                 for ky in six.moves.range(y.shape[4]):
@@ -78,16 +74,20 @@ class TestUpsampling2D(unittest.TestCase):
     def test_forward_gpu(self):
         self.pooled_y.to_gpu()
         self.check_forward(self.pooled_y)
-    #
-    # def check_backward(self, x_data, y_grad):
-    #     func = upsampling_2d.Upsampling2D(self.p, self.outsize)
-    #     gradient_check.check_backward(func, x_data, y_grad)
-    #
-    # @condition.retry(3)
-    # def test_backward_cpu(self):
-    #     self.check_backward(self.y.data, self.gy)
-    #
-    # @attr.gpu
-    # @condition.retry(3)
-    # def test_backward_gpu(self):
-    #     self.check_backward(cuda.to_gpu(self.y.data), cuda.to_gpu(self.gy))
+
+    def check_backward(self, x_data, y_grad):
+        func = upsampling_2d.Upsampling2D(
+            self.p.indexes, ksize=(self.p.kh, self.p.kw),
+            stride=(self.p.sy, self.p.sx), pad=(self.p.ph, self.p.pw),
+            outsize=self.in_shape[2:], cover_all=self.p.cover_all)
+        gradient_check.check_backward(func, x_data, y_grad)
+
+    @condition.retry(3)
+    def test_backward_cpu(self):
+        self.check_backward(self.pooled_y.data, self.gy)
+
+    @attr.gpu
+    @condition.retry(3)
+    def test_backward_gpu(self):
+        self.check_backward(cuda.to_gpu(
+            self.pooled_y.data), cuda.to_gpu(self.gy))

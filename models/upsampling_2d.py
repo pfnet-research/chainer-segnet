@@ -32,7 +32,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
         type_check.expect(
             x_type.dtype.kind == 'f',
             x_type.ndim == 4,
-            x_type.shape == self.indexes.shape
+            x_type.shape == self.indexes.shape,
         )
 
         if self.outh is not None:
@@ -60,7 +60,7 @@ class Upsampling2D(pooling_2d.Pooling2D):
             for c in six.moves.range(up_y.shape[1]):
                 for ky in six.moves.range(up_y.shape[4]):
                     for kx in six.moves.range(up_y.shape[5]):
-                        sy = self.indexes[n, c, ky, kx] / up_y.shape[3]
+                        sy = self.indexes[n, c, ky, kx] // up_y.shape[3]
                         sx = self.indexes[n, c, ky, kx] % up_y.shape[3]
                         up_y[n, c, sy, sx, ky, kx] = x[0][n, c, ky, kx]
         up_y = conv.col2im_cpu(up_y, self.sy, self.sx, self.ph,
@@ -79,24 +79,24 @@ class Upsampling2D(pooling_2d.Pooling2D):
         up_y = conv.im2col_gpu(up_y, self.kh, self.kw, self.sy, self.sx,
                                self.ph, self.pw)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
-        yn, yc, ykh, ykw, ysh, ysw = up_y.shape
+        n, c, sy, sx, ky, kx = up_y.shape
         indexes = cupy.asarray(self.indexes, dtype=np.int32)
         cupy.ElementwiseKernel(
-            'int32 indexes, float32 x, int32 n, int32 c, int32 kh, int32 kw,'
-            'int32 sh, int32 sw, int32 xh, int32 xw', 'raw float32 y',
+            'int32 indexes, float32 x, int32 n, int32 c, int32 sy, int32 sx,'
+            'int32 ky, int32 kx', 'raw float32 y',
             '''
-            int yn = i / c / xh / xw;
-            int yc = (i / xh / xw) % c;
-            int yky = (i / xw) % xh;
-            int ykx = i % xw;
-            y[yn * c * kh * kw * sh * sw +
-              yc * kh * kw * sh * sw +
-              yky * kw * sh * sw +
-              ykx * sh * sw +
+            int yn = i / c / sy / sx;
+            int yc = (i / sy / sx) % c;
+            int ysy = (i / sx) % sy;
+            int ysx = i % sx;
+            y[yn * c * sy * sx * ky * kx + \
+              yc * sy * sx * ky * kx + \
+              ysy * sx * ky * kx + \
+              ysx * ky * kx + \
               indexes] = x;
             ''',
             'upsampling_2d_fwd')(
-                indexes, x[0], yn, yc, ykh, ykw, ysh, ysw, h, w, up_y)
+                indexes, x[0], n, c, sy, sx, ky, kx, up_y)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
         up_y = conv.col2im_gpu(up_y, self.sy, self.sx, self.ph, self.pw,
                                self.outh, self.outw)
@@ -104,34 +104,76 @@ class Upsampling2D(pooling_2d.Pooling2D):
 
     def backward_cpu(self, x, gy):
         gcol = conv.im2col_cpu(
-            gy[0], self.p.kh, self.p.kw, self.p.sy,
-            self.p.sx, self.p.ph, self.p.pw)
+            gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
 
         gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
-        n, c, ky, kx, sy, sx = gcol.shape
-        gcol = gcol.reshape((n, c, ky, kx, sy * sx))
-        gx = np.empty((n, c, ky, kx), dtype=x[0].dtype)
+        n, c, sy, sx, ky, kx = gcol.shape
+        gcol = gcol.reshape((n, c, sy, sx, ky * kx))
+        gx = np.empty((n, c, sy, sx), dtype=x[0].dtype)
         for n in six.moves.range(gcol.shape[0]):
             for c in six.moves.range(gcol.shape[1]):
-                for ky in six.moves.range(gcol.shape[2]):
-                    for kx in six.moves.range(gcol.shape[3]):
-                        gx[n, c, ky, kx] = \
-                            gcol[n, c, ky, kx][self.p.indexes[n, c, ky, kx]]
+                for sy in six.moves.range(gcol.shape[2]):
+                    for sx in six.moves.range(gcol.shape[3]):
+                        gx[n, c, sy, sx] = \
+                            gcol[n, c, sy, sx][self.indexes[n, c, sy, sx]]
+
+        return gx,
+
+    def backward_gpu(self, x, gy):
+        gcol = conv.im2col_gpu(
+            gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
+
+        gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
+        n, c, sy, sx, ky, kx = gcol.shape
+        gcol = gcol.reshape((n, c, sy, sx, ky * kx))
+        indexes = cupy.asarray(self.indexes, dtype=np.int32)
+        gx = cupy.empty((n, c, sy, sx), dtype=x[0].dtype)
+        cupy.ElementwiseKernel(
+            'int32 indexes, raw float32 gcol, int32 n, int32 c, int32 sy,'
+            'int32 sx, int32 ky, int32 kx',
+            'raw float32 gx',
+            '''
+            int ind_n = i / c / sy / sx;
+            int ind_c = (i / sy / sx) % c;
+            int ind_sy = (i / sx) % sy;
+            int ind_sx = i % sx;
+            int gcol_ky = indexes / kx;
+            int gcol_kx = indexes % kx;
+            float top_gx = gcol[ind_n * c * sy * sx * ky * kx + \
+                                ind_c * sy * sx * ky * kx + \
+                                ind_sy * sx * ky * kx + \
+                                ind_sx * ky * kx + \
+                                gcol_ky * kx + \
+                                gcol_kx];
+            gx[ind_n * c * sy * sx + \
+               ind_c * sy * sx + \
+               ind_sy * sx + \
+               ind_sx] = top_gx;
+            ''',
+            'upsampling_2d_bwd')(indexes, gcol, n, c, sy, sx, ky, kx, gx)
 
         return gx,
 
 
-def upsampling_2d(x, indexes, ksize, stride=None, pad=0, outsize=None,
-                  cover_all=True):
+def upsampling_2d(
+        x, indexes, ksize, stride=None, pad=0, outsize=None, cover_all=True):
     """Upsampling using pooling indices.
 
     This function produces an upsampled image using pooling indices.
 
     Args:
         x (~chainer.Variable): Input variable.
-        pooler (~chainer.functions.Pooling2D): Pooling2D object that is used
-            to produce x, the first arg. e.g., An object of MaxPooling2D.
-        outsize (pair of ints): Expected output size (height, width).
+        indexes (~numpy.ndarray or ~cupy.ndarray): Index array that was used
+            to calculate x with MaxPooling2D.
+        ksize (int or (int, int)): ksize attribtue of MaxPooling2D object that
+            is used to calculate x
+        stride (int or (int, int)): stride attribtue of MaxPooling2D object
+            that is used to calculate x
+        pad (int or (int, int)): pad attribtue of MaxPooling2D object that is
+            used to calculate x
+        outsize ((int, int)): Expected output size (height, width).
+        cover_all (bool): Whether cover_all is used in the MaxPooling2D object
+            or not.
 
     Returns:
         ~chainer.Variable: Output variable.
