@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
+from chainer import cuda
 from chainer import reporter
 from models.upsampling_2d import upsampling_2d
 
@@ -43,7 +44,6 @@ class SegNet(chainer.Chain):
         self.train = True
 
     def upsampling_2d(self, pooler, x, outsize):
-        print(outsize)
         return upsampling_2d(
             x, pooler.indexes, ksize=(pooler.kh, pooler.kw),
             stride=(pooler.sy, pooler.sx), pad=(pooler.ph, pooler.pw),
@@ -62,25 +62,14 @@ class SegNet(chainer.Chain):
         h = self.pools[3](F.relu(self.bn4(self.conv4(h), test=not self.train)))
 
         # Decoder
-        print('--indexes--')
-        print(self.pools[3].indexes.shape)
-        print(self.pools[2].indexes.shape)
-        print(self.pools[1].indexes.shape)
-        print(self.pools[0].indexes.shape)
-        print('-----------')
         h = self.upsampling_2d(self.pools[3], h, (h3, w3))
         h = self.bn5(self.conv5(h), test=not self.train)
-        print(h.shape)
         h = self.upsampling_2d(self.pools[2], h, (h2, w2))
         h = self.bn6(self.conv6(h), test=not self.train)
-        print(h.shape)
         h = self.upsampling_2d(self.pools[1], h, (h1, w1))
         h = self.bn7(self.conv7(h), test=not self.train)
-        print(h.shape)
         h = self.upsampling_2d(self.pools[0], h, (h0, w0))
-        print(h.shape)
         h = self.conv_cls(self.bn8(self.conv8(h), test=not self.train))
-        print(h.shape)
         return h
 
 
@@ -98,6 +87,9 @@ class SegNetLoss(chainer.Chain):
     def __call__(self, x, t):
         y = self.predictor(x)
         if hasattr(self, 'class_weights'):
+            if isinstance(x.data, cuda.cupy.ndarray):
+                self.class_weights = cuda.to_gpu(
+                    self.class_weights, device=x.data.device)
             self.loss = wsce.weighted_softmax_cross_entropy(
                 y, t, self.class_weights)
         else:

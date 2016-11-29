@@ -39,20 +39,20 @@ def get_args():
         '--gpus', type=str, default='0',
         help='GPU Ids to be used')
     parser.add_argument(
-        '--batchsize', type=int, default=64,
+        '--batchsize', type=int, default=8,
         help='minibatch size')
     parser.add_argument(
-        '--snapshot_iter', type=int, default=1000,
+        '--snapshot_epoch', type=int, default=1,
         help='The current learnt parameters in the model is saved every'
-             'this iteration')
+             'this epoch')
     parser.add_argument(
-        '--valid_freq', type=int, default=1,
-        help='Perform test every this iteration (0 means no test)')
+        '--valid_freq', type=int, default=10,
+        help='Perform test every this epoch (0 means no test)')
     parser.add_argument(
         '--valid_batchsize', type=int, default=16,
         help='The mini-batch size during validation loop')
     parser.add_argument(
-        '--show_log_iter', type=int, default=10,
+        '--show_log_iter', type=int, default=1,
         help='Show loss value per this iterations')
 
     # Settings
