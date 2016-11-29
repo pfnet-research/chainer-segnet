@@ -2,14 +2,11 @@
 
 from __future__ import division
 from __future__ import print_function
-from chainer import cuda
 from chainer.functions.pooling import pooling_2d
 from chainer.utils import conv
 from chainer.utils import type_check
 
-import chainer
 import cupy
-import itertools
 import numpy as np
 import six
 
@@ -54,8 +51,9 @@ class Upsampling2D(pooling_2d.Pooling2D):
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
 
         up_y = np.zeros((n, c, self.outh, self.outw), dtype=np.float32)
-        up_y = conv.im2col_cpu(up_y, self.kh, self.kw, self.sy,
-                               self.sx, self.ph, self.pw)
+        up_y = conv.im2col_cpu(
+            up_y, self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
+            cover_all=self.cover_all)
         for n in six.moves.range(up_y.shape[0]):
             for c in six.moves.range(up_y.shape[1]):
                 for ky in six.moves.range(up_y.shape[4]):
@@ -76,27 +74,27 @@ class Upsampling2D(pooling_2d.Pooling2D):
             self.outw = conv.get_deconv_outsize(
                 w, self.kw, self.sx, self.pw, cover_all=self.cover_all)
         up_y = cupy.zeros((n, c, self.outh, self.outw), dtype=np.float32)
-        up_y = conv.im2col_gpu(up_y, self.kh, self.kw, self.sy, self.sx,
-                               self.ph, self.pw)
+        up_y = conv.im2col_gpu(
+            up_y, self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
+            cover_all=self.cover_all)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
         n, c, sy, sx, ky, kx = up_y.shape
         indexes = cupy.asarray(self.indexes, dtype=np.int32)
         cupy.ElementwiseKernel(
             'int32 indexes, float32 x, int32 n, int32 c, int32 sy, int32 sx,'
-            'int32 ky, int32 kx', 'raw float32 y',
+            'int32 ky, int32 kx', 'raw float32 up_y',
             '''
             int yn = i / c / sy / sx;
             int yc = (i / sy / sx) % c;
             int ysy = (i / sx) % sy;
             int ysx = i % sx;
-            y[yn * c * sy * sx * ky * kx + \
+            up_y[yn * c * sy * sx * ky * kx + \
               yc * sy * sx * ky * kx + \
               ysy * sx * ky * kx + \
               ysx * ky * kx + \
               indexes] = x;
             ''',
-            'upsampling_2d_fwd')(
-                indexes, x[0], n, c, sy, sx, ky, kx, up_y)
+            'upsampling_2d_fwd')(indexes, x[0], n, c, sy, sx, ky, kx, up_y)
         up_y = up_y.transpose(0, 1, 4, 5, 2, 3)
         up_y = conv.col2im_gpu(up_y, self.sy, self.sx, self.ph, self.pw,
                                self.outh, self.outw)
@@ -104,7 +102,8 @@ class Upsampling2D(pooling_2d.Pooling2D):
 
     def backward_cpu(self, x, gy):
         gcol = conv.im2col_cpu(
-            gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
+            gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
+            cover_all=self.cover_all)
 
         gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
         n, c, sy, sx, ky, kx = gcol.shape
@@ -120,7 +119,8 @@ class Upsampling2D(pooling_2d.Pooling2D):
 
     def backward_gpu(self, x, gy):
         gcol = conv.im2col_gpu(
-            gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw)
+            gy[0], self.kh, self.kw, self.sy, self.sx, self.ph, self.pw,
+            cover_all=self.cover_all)
 
         gcol = gcol.transpose(0, 1, 4, 5, 2, 3)
         n, c, sy, sx, ky, kx = gcol.shape

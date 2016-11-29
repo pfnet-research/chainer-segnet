@@ -90,7 +90,7 @@ def get_args():
     parser.add_argument(
         '--class_weights', type=str,
         default='0.2595,0.1826,4.5640,0.1417,0.9051,0.3826,9.6446,1.8418,'
-                '0.6823,6.2478,7.3614',
+                '0.6823,6.2478,7.3614,0.0',
         help='Weights for classes used in softmax cross entropy loss '
              'calculation')
     parser.add_argument(

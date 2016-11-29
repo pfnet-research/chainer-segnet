@@ -7,7 +7,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from chainer import cuda
-from chainer import functions
 from chainer import gradient_check
 from chainer import testing
 from chainer.testing import attr
@@ -15,7 +14,6 @@ from chainer.testing import condition
 from models import weighted_softmax_cross_entropy
 
 import chainer
-import mock
 import numpy
 import six
 import unittest

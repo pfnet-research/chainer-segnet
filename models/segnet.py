@@ -11,6 +11,7 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import math
+import models.weighted_softmax_cross_entropy as wsce
 import numpy as np
 
 
@@ -38,15 +39,15 @@ class SegNet(chainer.Chain):
             conv_cls=L.Convolution2D(64, n_classes, 1, 1, 0, w)
         )
         self.n_classes = n_classes
-        self.pools = [F.MaxPooling2D(2, 2) for _ in range(4)]
+        self.pools = [F.MaxPooling2D(2, 2, use_cudnn=False) for _ in range(4)]
         self.train = True
 
-    def upsampling_2d(self, pooler, x):
-        outsize = (x.shape[2] * 2, x.shape[3] * 2)
+    def upsampling_2d(self, pooler, x, outsize):
+        print(outsize)
         return upsampling_2d(
-            x, pooler.indexes, ksize=(pooler.ksize, pooler.ksize),
-            stride=(pooler.stride, pooler.stride),
-            pad=(pooler.pad, pooler.pad), outsize=outsize)
+            x, pooler.indexes, ksize=(pooler.kh, pooler.kw),
+            stride=(pooler.sy, pooler.sx), pad=(pooler.ph, pooler.pw),
+            outsize=outsize)
 
     def __call__(self, x):
         # Encoder
@@ -61,14 +62,26 @@ class SegNet(chainer.Chain):
         h = self.pools[3](F.relu(self.bn4(self.conv4(h), test=not self.train)))
 
         # Decoder
-        h = self.upsampling_2d(self.pools[3], h)
+        print('--indexes--')
+        print(self.pools[3].indexes.shape)
+        print(self.pools[2].indexes.shape)
+        print(self.pools[1].indexes.shape)
+        print(self.pools[0].indexes.shape)
+        print('-----------')
+        h = self.upsampling_2d(self.pools[3], h, (h3, w3))
         h = self.bn5(self.conv5(h), test=not self.train)
-        h = self.upsampling_2d(self.pools[2], h)
+        print(h.shape)
+        h = self.upsampling_2d(self.pools[2], h, (h2, w2))
         h = self.bn6(self.conv6(h), test=not self.train)
-        h = self.upsampling_2d(self.pools[1], h)
+        print(h.shape)
+        h = self.upsampling_2d(self.pools[1], h, (h1, w1))
         h = self.bn7(self.conv7(h), test=not self.train)
-        h = self.upsampling_2d(self.pools[0], h)
-        return self.conv_cls(self.bn8(self.conv8(h), test=not self.train))
+        print(h.shape)
+        h = self.upsampling_2d(self.pools[0], h, (h0, w0))
+        print(h.shape)
+        h = self.conv_cls(self.bn8(self.conv8(h), test=not self.train))
+        print(h.shape)
+        return h
 
 
 class SegNetLoss(chainer.Chain):
@@ -76,20 +89,17 @@ class SegNetLoss(chainer.Chain):
     def __init__(self, model, class_weights=None):
         super(SegNetLoss, self).__init__(predictor=model)
         if class_weights is not None:
-            class_weights = np.asarray([class_weights], dtype=np.float32)
-            class_weights = chainer.Variable(class_weights, 'auto')
-            class_weights = F.expand_dims(class_weights, 2)
-            self.class_weights = F.expand_dims(class_weights, 3)
-            assert(self.class_weights.shape == (1, model.n_classes, 1, 1))
-            print('The loss is weighted by this: {}'.format(class_weights))
+            if not isinstance(class_weights, np.ndarray):
+                class_weights = np.asarray(class_weights, dtype=np.float32)
+            self.class_weights = class_weights
+            assert self.class_weights.ndim == 1
+            assert len(self.class_weights) == model.n_classes
 
     def __call__(self, x, t):
         y = self.predictor(x)
         if hasattr(self, 'class_weights'):
-            w = F.broadcast_to(self.class_weights, y.shape)
-            with chainer.cuda.get_device(x.data) as gid:
-                w.data = chainer.cuda.to_gpu(w.data, int(gid))
-            self.loss = weighted_softmax_cross_entropy(y, t, w)
+            self.loss = wsce.weighted_softmax_cross_entropy(
+                y, t, self.class_weights)
         else:
             self.loss = F.softmax_cross_entropy(y, t)
         reporter.report({'loss': self.loss}, self)

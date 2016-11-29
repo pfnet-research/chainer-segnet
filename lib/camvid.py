@@ -39,7 +39,6 @@ class CamVid(dataset_mixin.DatasetMixin):
         self.rotate = rotate
         self.rotate_max = rotate_max
         self.ignore_labels = ignore_labels
-        print('Ignore labels: {}'.format(self.ignore_labels))
 
     def __len__(self):
         return len(self.img_fns)

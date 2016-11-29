@@ -25,16 +25,14 @@ import unittest
 
 
 @testing.parameterize(
-    {'in_shape': (2, 3, 6, 6)},
-    {'in_shape': (2, 4, 8, 8)},
-    {'in_shape': (2, 4, 10, 10)},
-    {'in_shape': (2, 4, 10, 12)},
+    {'in_shape': (4, 3, 6, 8)},
+    {'in_shape': (4, 3, 5, 7)},
 )
 class TestUpsampling2D(unittest.TestCase):
 
     def setUp(self):
         self.x = np.random.uniform(-1, 1, self.in_shape).astype('f')
-        self.p = F.MaxPooling2D(2, 2)
+        self.p = F.MaxPooling2D(2, 2, use_cudnn=False)
         self.pooled_y = self.p(self.x)
         self.gy = np.random.uniform(
             -1, 1, self.in_shape).astype(np.float32)
