@@ -116,7 +116,6 @@ class Upsampling2D(pooling_2d.Pooling2D):
                     for sx in six.moves.range(gcol.shape[3]):
                         gx[n, c, sy, sx] = \
                             gcol[n, c, sy, sx][self.indexes[n, c, sy, sx]]
-
         return gx,
 
     def backward_gpu(self, x, gy):

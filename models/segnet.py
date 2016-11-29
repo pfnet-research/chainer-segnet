@@ -5,8 +5,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 from chainer import reporter
-from models.weighted_softmax_cross_entropy import \
-    weighted_softmax_cross_entropy
+from models.upsampling_2d import upsampling_2d
 
 import chainer
 import chainer.functions as F
@@ -42,8 +41,16 @@ class SegNet(chainer.Chain):
         self.pools = [F.MaxPooling2D(2, 2) for _ in range(4)]
         self.train = True
 
+    def upsampling_2d(self, pooler, x):
+        outsize = (x.shape[2] * 2, x.shape[3] * 2)
+        return upsampling_2d(
+            x, pooler.indexes, ksize=(pooler.ksize, pooler.ksize),
+            stride=(pooler.stride, pooler.stride),
+            pad=(pooler.pad, pooler.pad), outsize=outsize)
+
     def __call__(self, x):
-        h = F.local_response_normalization(x, 5, 1, 0.0001, 0.75)
+        # Encoder
+        h = F.local_response_normalization(x, 5, 1, 0.0005, 0.75)
         h0, w0 = h.shape[2:]
         h = self.pools[0](F.relu(self.bn1(self.conv1(h), test=not self.train)))
         h1, w1 = h.shape[2:]
@@ -52,13 +59,15 @@ class SegNet(chainer.Chain):
         h = self.pools[2](F.relu(self.bn3(self.conv3(h), test=not self.train)))
         h3, w3 = h.shape[2:]
         h = self.pools[3](F.relu(self.bn4(self.conv4(h), test=not self.train)))
-        h = F.unpooling_2d(h, 2, 2, outsize=(h3, w3))
+
+        # Decoder
+        h = self.upsampling_2d(self.pools[3], h)
         h = self.bn5(self.conv5(h), test=not self.train)
-        h = F.unpooling_2d(h, 2, 2, outsize=(h2, w2))
+        h = self.upsampling_2d(self.pools[2], h)
         h = self.bn6(self.conv6(h), test=not self.train)
-        h = F.unpooling_2d(h, 2, 2, outsize=(h1, w1))
+        h = self.upsampling_2d(self.pools[1], h)
         h = self.bn7(self.conv7(h), test=not self.train)
-        h = F.unpooling_2d(h, 2, 2, outsize=(h0, w0))
+        h = self.upsampling_2d(self.pools[0], h)
         return self.conv_cls(self.bn8(self.conv8(h), test=not self.train))
 
 

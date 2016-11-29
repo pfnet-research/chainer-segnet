@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
 from chainer import cuda
 from chainer.functions import SoftmaxCrossEntropy
 from chainer.functions.activation import log_softmax
@@ -24,16 +23,21 @@ class WeightedSoftmaxCrossEntropy(SoftmaxCrossEntropy):
             t_type.dtype == numpy.int32,
             t_type.ndim == x_type.ndim - 1,
             w_type.dtype.kind == 'f',
-            w_type.ndim == x_type.ndim,
             x_type.shape[0] == t_type.shape[0],
             x_type.shape[2:] == t_type.shape[1:],
-            w_type.shape == x_type.shape,
+            w_type.ndim == 1,
+            w_type.shape[0] == x_type.shape[1],
         )
 
     def forward_cpu(self, inputs):
         x, t, w = inputs
         if chainer.is_debug():
             self._check_input_values(x, t)
+
+        if w.shape != t.shape:
+            assert w.ndim == 1
+            w = w.reshape(1, -1, 1, 1)
+            w = numpy.broadcast_to(w, x.shape)
 
         log_y = log_softmax._log_softmax(x, self.use_cudnn) * w
         if self.cache_score:
@@ -60,6 +64,11 @@ class WeightedSoftmaxCrossEntropy(SoftmaxCrossEntropy):
         if chainer.is_debug():
             self._check_input_values(x, t)
 
+        if w.shape != t.shape:
+            assert w.ndim == 1
+            w = w.reshape(1, -1, 1, 1)
+            w = cupy.broadcast_to(w, x.shape)
+
         log_y = log_softmax._log_softmax(x, self.use_cudnn) * w
         if self.cache_score:
             self.y = cupy.exp(log_y)
@@ -79,27 +88,29 @@ class WeightedSoftmaxCrossEntropy(SoftmaxCrossEntropy):
 
     def backward_cpu(self, inputs, grad_outputs):
         x, t, w = inputs
+        if w.shape != t.shape:
+            assert w.ndim == 1
+            w = w.reshape(1, -1, 1, 1)
+            w = numpy.broadcast_to(w, x.shape)
+
         gloss = grad_outputs[0]
         n_unit = t.size // len(t)
         if hasattr(self, 'y'):
             y = self.y.copy()
         else:
-            y = log_softmax._log_softmax(x, self.use_cudnn)
-            y = numpy.exp(y, out=y)
-        if y.ndim == 2:
-            gx = y
-            gx[numpy.arange(len(t)), numpy.maximum(t, 0)] -= 1
-            gx *= (t != self.ignore_label).reshape((len(t), 1))
-        else:
-            # in the case where y.ndim is higher than 2,
-            # we think that a current implementation is inefficient
-            # because it yields two provisional arrays for indexing.
-            gx = y.reshape(y.shape[0], y.shape[1], -1)
-            fst_index = numpy.arange(t.size) // n_unit
-            trd_index = numpy.arange(t.size) % n_unit
-            gx[fst_index, numpy.maximum(t.ravel(), 0), trd_index] -= 1
-            gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
-            gx = gx.reshape(y.shape)
+            y = log_softmax._log_softmax(x, self.use_cudnn) * w
+            numpy.exp(y, out=y)
+
+        assert y.ndim == 4
+        # in the case where y.ndim is higher than 2,
+        # we think that a current implementation is inefficient
+        # because it yields two provisional arrays for indexing.
+        gx = y.reshape(y.shape[0], y.shape[1], -1)
+        fst_index = numpy.arange(t.size) // n_unit
+        trd_index = numpy.arange(t.size) % n_unit
+        gx[fst_index, numpy.maximum(t.ravel(), 0), trd_index] -= 1
+        gx *= (t != self.ignore_label).reshape((len(t), 1, -1))
+        gx = gx.reshape(y.shape)
 
         gx *= gloss * self._coeff
         return gx, None, None
@@ -107,10 +118,15 @@ class WeightedSoftmaxCrossEntropy(SoftmaxCrossEntropy):
     def backward_gpu(self, inputs, grad_outputs):
         cupy = cuda.cupy
         x, t, w = inputs
+        if w.shape != t.shape:
+            assert w.ndim == 1
+            w = w.reshape(1, -1, 1, 1)
+            w = cupy.broadcast_to(w, x.shape)
+
         if hasattr(self, 'y'):
             y = self.y
         else:
-            y = log_softmax._log_softmax(x, self.use_cudnn)
+            y = log_softmax._log_softmax(x, self.use_cudnn) * w
             cupy.exp(y, out=y)
         gloss = grad_outputs[0]
         n_unit = t.size // len(t)
