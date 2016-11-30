@@ -39,3 +39,10 @@ sudo nvidia-docker run \
 -p 8888:8888 \
 -ti chainer-segnet /usr/bin/zsh
 ```
+
+### For debug
+
+```
+conda install -c conda-forge gdb
+CFLAGS='-Wall -O0 -g' python setup.py install
+```

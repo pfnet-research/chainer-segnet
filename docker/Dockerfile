@@ -5,7 +5,7 @@ RUN apt-get update
 RUN apt-get -y \
 	-o Dpkg::Options::="--force-confdef" \
 	-o Dpkg::Options::="--force-confold" dist-upgrade
-RUN apt-get install -y zsh silversearcher-ag tmux git curl wget
+RUN apt-get install -y zsh silversearcher-ag tmux git curl wget build-essential python-dev libgtk2.0-dev
 RUN useradd -m -d /home/ubuntu ubuntu
 RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 RUN chown -R ubuntu:ubuntu /home/ubuntu
@@ -36,3 +36,7 @@ RUN pyenv install anaconda3-4.2.0
 RUN pyenv global anaconda3-4.2.0
 RUN pyenv rehash
 RUN conda install -c https://conda.binstar.org/menpo -y opencv3
+
+RUN git clone https://github.com/pfnet/chainer
+RUN cd chainer; python setup.py install
+RUN python -c "import chainer; print(chainer.cuda.available); print(chainer.cuda.cudnn_enabled)"

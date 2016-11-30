@@ -11,37 +11,23 @@ from models.upsampling_2d import upsampling_2d
 import chainer
 import chainer.functions as F
 import chainer.links as L
+import copy
 import math
 import models.weighted_softmax_cross_entropy as wsce
 import numpy as np
 
 
-class SegNet(chainer.Chain):
+class EncDec(chainer.Chain):
 
-    def __init__(self, n_classes):
+    def __init__(self, inside=None):
         w = math.sqrt(2)
-        super(SegNet, self).__init__(
-            conv1=L.Convolution2D(3, 64, 7, 1, 3, w),
-            bn1=L.BatchNormalization(64),
-            conv2=L.Convolution2D(64, 64, 7, 1, 3, w),
-            bn2=L.BatchNormalization(64),
-            conv3=L.Convolution2D(64, 64, 7, 1, 3, w),
-            bn3=L.BatchNormalization(64),
-            conv4=L.Convolution2D(64, 64, 7, 1, 3, w),
-            bn4=L.BatchNormalization(64),
-            conv5=L.Convolution2D(64, 64, 7, 1, 3, w),
-            bn5=L.BatchNormalization(64),
-            conv6=L.Convolution2D(64, 64, 7, 1, 3, w),
-            bn6=L.BatchNormalization(64),
-            conv7=L.Convolution2D(64, 64, 7, 1, 3, w),
-            bn7=L.BatchNormalization(64),
-            conv8=L.Convolution2D(64, 64, 7, 1, 3, w),
-            bn8=L.BatchNormalization(64),
-            conv_cls=L.Convolution2D(64, n_classes, 1, 1, 0, w)
+        super(EncDec, self).__init__(
+            enc=L.Convolution2D(3, 64, 7, 1, 3, w),
+            bn_m=L.BatchNormalization(64),
+            dec=L.Convolution2D(3, 64, 7, 1, 3, w),
         )
-        self.n_classes = n_classes
-        self.pools = [F.MaxPooling2D(2, 2, use_cudnn=False) for _ in range(4)]
-        self.train = True
+        self.p = F.MaxPooling2D(2, 2, use_cudnn=False)
+        self.inside = inside
 
     def upsampling_2d(self, pooler, x, outsize):
         return upsampling_2d(
@@ -49,28 +35,66 @@ class SegNet(chainer.Chain):
             stride=(pooler.sy, pooler.sx), pad=(pooler.ph, pooler.pw),
             outsize=outsize)
 
-    def __call__(self, x):
-        # Encoder
-        h = F.local_response_normalization(x, 5, 1, 0.0005, 0.75)
-        h0, w0 = h.shape[2:]
-        h = self.pools[0](F.relu(self.bn1(self.conv1(h), test=not self.train)))
-        h1, w1 = h.shape[2:]
-        h = self.pools[1](F.relu(self.bn2(self.conv2(h), test=not self.train)))
-        h2, w2 = h.shape[2:]
-        h = self.pools[2](F.relu(self.bn3(self.conv3(h), test=not self.train)))
-        h3, w3 = h.shape[2:]
-        h = self.pools[3](F.relu(self.bn4(self.conv4(h), test=not self.train)))
+    def __call__(self, x, out_bn=True, train=True):
+        # Encode
+        h = self.p(F.relu(self.bn_m(self.enc(x), test=not train)))
 
-        # Decoder
-        h = self.upsampling_2d(self.pools[3], h, (h3, w3))
-        h = self.bn5(self.conv5(h), test=not self.train)
-        h = self.upsampling_2d(self.pools[2], h, (h2, w2))
-        h = self.bn6(self.conv6(h), test=not self.train)
-        h = self.upsampling_2d(self.pools[1], h, (h1, w1))
-        h = self.bn7(self.conv7(h), test=not self.train)
-        h = self.upsampling_2d(self.pools[0], h, (h0, w0))
-        h = self.conv_cls(self.bn8(self.conv8(h), test=not self.train))
+        # Run the inside network
+        if self.inside is not None:
+            h = self.inside(h)
+
+        # Decode
+        h = self.upsampling_2d(self.p, h, x.shape[2:])
+        if out_bn:
+            if not hasattr(self, 'bn_o'):
+                self.add_link('bn_o', L.BatchNormalization(64))
+            h = self.bn_o(h, test=not train)
         return h
+
+
+class SegNet(chainer.Chain):
+
+    def __init__(self, optimizer, n_encdec=4, n_classes=12):
+        w = math.sqrt(2)
+        super(SegNet, self).__init__(
+            conv_cls=L.Convolution2D(64, n_classes, 1, 1, 0, w)
+        )
+
+        # Setup each optimizer for each encdec
+        self.optimizers = {}
+        for i in range(n_encdec):
+            name = 'encdec{}'.format(i)
+            if i == 0:
+                encdec = EncDec(inside=None)
+            else:
+                inside = getattr(self, 'encdec{}'.format(i - 1))
+                encdec = EncDec(inside=inside)
+            self.add_link(name, encdec)
+            opt = copy.deepcopy(optimizer)
+            opt.setup(getattr(self, name))
+            self.optimizers[name] = opt
+        opt = copy.deepcopy(optimizer)
+        opt.setup(self.conv_cls)
+        self.optimizers['conv_cls'] = opt
+
+        self.n_encdec = n_encdec
+        self.n_classes = n_classes
+        self.train = True
+
+    def __call__(self, x, depth=1):
+        assert depth < self.n_encdec
+
+        h = F.local_response_normalization(x, 5, 1, 0.0005, 0.75)
+        name = 'encdec{}'.format(depth - 1)
+        h = getattr(self, name)(h, train=self.train)
+        h = self.conv_cls(self.bn8(self.conv8(h), test=not self.train))
+
+        optimizers = [self.optimizers[name]]
+        if depth == 1:
+            # Optimize the output conv layer only during first stage training
+            optimizers.append(self.optimizers['conv_cls'])
+
+        return h, optimizers
 
 
 class SegNetLoss(chainer.Chain):
@@ -84,8 +108,8 @@ class SegNetLoss(chainer.Chain):
             assert self.class_weights.ndim == 1
             assert len(self.class_weights) == model.n_classes
 
-    def __call__(self, x, t):
-        y = self.predictor(x)
+    def __call__(self, x, t, depth=1):
+        y, optimizers = self.predictor(x, depth)
         if hasattr(self, 'class_weights'):
             if isinstance(x.data, cuda.cupy.ndarray):
                 self.class_weights = cuda.to_gpu(
@@ -95,4 +119,4 @@ class SegNetLoss(chainer.Chain):
         else:
             self.loss = F.softmax_cross_entropy(y, t)
         reporter.report({'loss': self.loss}, self)
-        return self.loss
+        return self.loss, optimizers
