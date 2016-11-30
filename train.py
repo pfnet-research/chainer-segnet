@@ -53,8 +53,8 @@ if __name__ == '__main__':
         args.std, ignore_labels=args.ignore_labels)
     print('train: {}, valid: {}'.format(len(train), len(valid)))
     train_iter = iterators.MultiprocessIterator(train, args.batchsize)
-    valid_iter = iterators.MultiprocessIterator(valid, args.valid_batchsize,
-                                                repeat=False, shuffle=False)
+    valid_iter = iterators.SerialIterator(valid, args.valid_batchsize,
+                                          repeat=False, shuffle=False)
 
     updater = training.ParallelUpdater(train_iter, optimizer, devices=devices)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=result_dir)

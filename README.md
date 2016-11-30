@@ -5,9 +5,10 @@ SegNet implementation &amp; experiments written in Chainer
 
 - Python 2.7.12 (Python 3.5.1+ somehow stacks at multiprocessing)
 - Chainer 1.17.0+
-- scikit-learn
-- NumPy
-- OpenCV
+- scikit-learn 0.17.1
+- NumPy 1.11.0+
+- OpenCV 3.1.0
+    - `conda install -c https://conda.binstar.org/menpo opencv3`
 
 ### For debug
 
