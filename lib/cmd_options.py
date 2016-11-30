@@ -79,6 +79,10 @@ def get_args():
         '--n_classes', type=int, default=12,
         help='The number of classes that the model predicts')
     parser.add_argument(
+        '--n_encdec', type=int, default=4,
+        help='The number of Encoder-Decoder pairs that are included in the'
+             ' Segnet model')
+    parser.add_argument(
         '--mean', type=str, default=None,
         help='Mean npy over the training data')
     parser.add_argument(

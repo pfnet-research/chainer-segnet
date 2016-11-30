@@ -5,10 +5,11 @@ This is an unofficial implementation of SegNet. This implementation doesn't use 
 
 ## Requirements
 
-- Python 2.7.12 (Python 3.5.1+ somehow stacks at multiprocessing)
+- Python 2.7.12+, 3.5.1+
 - Chainer 1.17.0+
 - scikit-learn 0.17.1
 - NumPy 1.11.0+
+- six 1.10.0
 - OpenCV 3.1.0
     - `conda install -c https://conda.binstar.org/menpo opencv3`
 

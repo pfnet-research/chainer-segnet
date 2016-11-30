@@ -39,4 +39,3 @@ RUN conda install -c https://conda.binstar.org/menpo -y opencv3
 
 RUN git clone https://github.com/pfnet/chainer
 RUN cd chainer; python setup.py install
-RUN python -c "import chainer; print(chainer.cuda.available); print(chainer.cuda.cudnn_enabled)"

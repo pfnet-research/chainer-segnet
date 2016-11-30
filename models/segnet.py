@@ -15,19 +15,20 @@ import copy
 import math
 import models.weighted_softmax_cross_entropy as wsce
 import numpy as np
+import six
 
 
 class EncDec(chainer.Chain):
 
-    def __init__(self, inside=None):
+    def __init__(self, in_channel, n_mid=64):
         w = math.sqrt(2)
         super(EncDec, self).__init__(
-            enc=L.Convolution2D(3, 64, 7, 1, 3, w),
-            bn_m=L.BatchNormalization(64),
-            dec=L.Convolution2D(3, 64, 7, 1, 3, w),
+            enc=L.Convolution2D(in_channel, n_mid, 7, 1, 3, w),
+            bn_m=L.BatchNormalization(n_mid),
+            dec=L.Convolution2D(n_mid, n_mid, 7, 1, 3, w),
         )
         self.p = F.MaxPooling2D(2, 2, use_cudnn=False)
-        self.inside = inside
+        self.inside = None
 
     def upsampling_2d(self, pooler, x, outsize):
         return upsampling_2d(
@@ -44,57 +45,65 @@ class EncDec(chainer.Chain):
             h = self.inside(h)
 
         # Decode
-        h = self.upsampling_2d(self.p, h, x.shape[2:])
+        h = self.dec(self.upsampling_2d(self.p, h, x.shape[2:]))
         if out_bn:
             if not hasattr(self, 'bn_o'):
                 self.add_link('bn_o', L.BatchNormalization(64))
+                if isinstance(x.data, cuda.cupy.ndarray):
+                    self.bn_o.to_gpu(x.data.device)
             h = self.bn_o(h, test=not train)
         return h
 
 
 class SegNet(chainer.Chain):
 
-    def __init__(self, optimizer, n_encdec=4, n_classes=12):
+    def __init__(self, optimizer=None, n_encdec=4, n_classes=12, n_mid=64):
         w = math.sqrt(2)
         super(SegNet, self).__init__(
-            conv_cls=L.Convolution2D(64, n_classes, 1, 1, 0, w)
-        )
+            conv_cls=L.Convolution2D(n_mid, n_classes, 1, 1, 0, w))
 
-        # Setup each optimizer for each encdec
-        self.optimizers = {}
-        for i in range(n_encdec):
+        # Create and add EncDecs
+        names = ['conv_cls']
+        for i in six.moves.range(1, n_encdec + 1):
             name = 'encdec{}'.format(i)
-            if i == 0:
-                encdec = EncDec(inside=None)
-            else:
-                inside = getattr(self, 'encdec{}'.format(i - 1))
-                encdec = EncDec(inside=inside)
+            encdec = EncDec(n_mid if i > 1 else 3, n_mid)
             self.add_link(name, encdec)
-            opt = copy.deepcopy(optimizer)
-            opt.setup(getattr(self, name))
-            self.optimizers[name] = opt
-        opt = copy.deepcopy(optimizer)
-        opt.setup(self.conv_cls)
-        self.optimizers['conv_cls'] = opt
+            names.append(name)
+
+        # Setup each optimizer for each EncDec or conv_cls
+        if optimizer is not None:
+            self.optimizers = {}
+            for name in names:
+                opt = copy.deepcopy(optimizer)
+                opt.setup(getattr(self, name))
+                self.optimizers[name] = opt
+            self.optimizer_orig = optimizer
 
         self.n_encdec = n_encdec
         self.n_classes = n_classes
         self.train = True
 
     def __call__(self, x, depth=1):
-        assert depth < self.n_encdec
+        assert 1 <= depth <= self.n_encdec
 
         h = F.local_response_normalization(x, 5, 1, 0.0005, 0.75)
-        name = 'encdec{}'.format(depth - 1)
-        h = getattr(self, name)(h, train=self.train)
-        h = self.conv_cls(self.bn8(self.conv8(h), test=not self.train))
 
-        optimizers = [self.optimizers[name]]
-        if depth == 1:
-            # Optimize the output conv layer only during first stage training
-            optimizers.append(self.optimizers['conv_cls'])
+        for d in six.moves.range(1, depth + 1):
+            encdec = getattr(self, 'encdec{}'.format(d))
+            if depth >= d + 1:
+                encdec.inside = getattr(self, 'encdec{}'.format(d + 1))
+        h = self.encdec1(h, train=self.train)
+        h = self.conv_cls(h)
 
-        return h, optimizers
+        if self.train:
+            optimizers = [self.optimizers['encdec{}'.format(depth)]]
+            if depth == 1:
+                # Optimize conv_cls only during training for encdec1
+                optimizers.append(self.optimizers['conv_cls'])
+            assert 1 <= len(optimizers) <= 2
+            return h, optimizers
+        else:
+            return h
 
 
 class SegNetLoss(chainer.Chain):
