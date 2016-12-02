@@ -73,18 +73,19 @@ if __name__ == '__main__':
 
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=result_dir)
     if args.resume is not None:
-        serializers.load_npz(args.resume, trainer)
+        serializers.load_npz(args.resume, model)
 
     # trainer.extend(
     #     extensions.Evaluator(valid_iter, model, device=devices['main']),
     #     trigger=(args.valid_freq, 'epoch'))
     trainer.extend(extensions.dump_graph(
-        'main/loss', out_name='EncDec{}.dot'.format(args.train_depth)))
+        'main/loss', out_name='encdec{}.dot'.format(args.train_depth)))
     trainer.extend(
-        extensions.snapshot(
+        extensions.snapshot_object(
+            model,
             trigger=(args.snapshot_epoch, 'epoch'),
-            filename='EncDec{.updater.depth}'.format(trainer) +
-                     '_epoch_{.updater.epoch}'))
+            filename='encdec{.updater.depth}'.format(trainer) +
+                     '_epoch_{.updater.epoch}.model'))
     trainer.extend(
         extensions.LogReport(trigger=(args.show_log_iter, 'iteration')))
     trainer.extend(extensions.PrintReport(

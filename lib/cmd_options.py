@@ -31,7 +31,7 @@ def get_args():
         '--loss_name', type=str, default='SegNetLoss',
         help='The name of the loss function')
     parser.add_argument(
-        '--resume', type=str,
+        '--resume', type=str, default=None,
         help='Saved trainer state to be used for resuming')
     parser.add_argument(
         '--trunk', type=str,

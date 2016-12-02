@@ -78,11 +78,6 @@ class SegNet(chainer.Chain):
             self.add_link(name, encdec)
             names.append(name)
 
-        # Add WeightDecay if it's specified by 'args'
-        if hasattr(optimizer, 'decay') \
-                and 'WeightDecay' not in optimizer._hooks:
-            optimizer.add_hook(chainer.optimizer.WeightDecay(optimizer.decay))
-
         # Setup each optimizer for each EncDec or conv_cls
         if optimizer is not None:
             self.optimizers = {}
@@ -90,6 +85,11 @@ class SegNet(chainer.Chain):
                 opt = copy.deepcopy(optimizer)
                 opt.setup(getattr(self, name))
                 self.optimizers[name] = opt
+
+        # Add WeightDecay if it's specified by 'args'
+        for name, opt in self.optimizers.items():
+            if hasattr(opt, 'decay') and 'WeightDecay' not in opt._hooks:
+                opt.add_hook(chainer.optimizer.WeightDecay(opt.decay))
 
         self.n_encdec = n_encdec
         self.n_classes = n_classes
