@@ -77,7 +77,8 @@ if __name__ == '__main__':
     trainer.extend(
         extensions.snapshot(
             trigger=(args.snapshot_epoch, 'epoch'),
-            filename='EncDec{.updater.depth}_epoch_{.updater.epoch}'))
+            filename='EncDec{.updater.depth}'.format(trainer) +
+                     '_epoch_{.updater.epoch}'))
     trainer.extend(
         extensions.LogReport(trigger=(args.show_log_iter, 'iteration')))
     trainer.extend(extensions.PrintReport(
