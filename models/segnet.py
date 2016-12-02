@@ -64,7 +64,8 @@ class SegNet(chainer.Chain):
     optimize each part (Encoder-Decoder pair or conv_cls) of SegNet.
     """
 
-    def __init__(self, optimizer=None, n_encdec=4, n_classes=12, n_mid=64):
+    def __init__(self, optimizer=None, n_encdec=4, n_classes=12, n_mid=64,
+                 finetune=False):
         assert n_encdec >= 1
         w = math.sqrt(2)
         super(SegNet, self).__init__(
@@ -79,24 +80,27 @@ class SegNet(chainer.Chain):
             names.append(name)
 
         # Setup each optimizer for each EncDec or conv_cls
-        if optimizer is not None:
+        if optimizer is not None and not finetune:
             self.optimizers = {}
             for name in names:
                 opt = copy.deepcopy(optimizer)
                 opt.setup(getattr(self, name))
                 self.optimizers[name] = opt
 
-        # Add WeightDecay if it's specified by 'args'
-        for name, opt in self.optimizers.items():
-            if hasattr(opt, 'decay') and 'WeightDecay' not in opt._hooks:
-                opt.add_hook(chainer.optimizer.WeightDecay(opt.decay))
+            # Add WeightDecay if it's specified by 'args'
+            for name, opt in self.optimizers.items():
+                if hasattr(opt, 'decay') and 'WeightDecay' not in opt._hooks:
+                    opt.add_hook(chainer.optimizer.WeightDecay(opt.decay))
 
         self.n_encdec = n_encdec
         self.n_classes = n_classes
+        self.finetune = finetune
         self.train = True
 
     def __call__(self, x, depth=1):
         assert 1 <= depth <= self.n_encdec
+        if self.finetune:
+            depth = self.n_encdec
 
         h = F.local_response_normalization(x, 5, 1, 0.0005, 0.75)
 
@@ -110,7 +114,7 @@ class SegNet(chainer.Chain):
         h = self.encdec1(h, train=self.train)
         h = self.conv_cls(h)
 
-        if self.train:
+        if self.train and not self.finetune:
             name = 'encdec{}'.format(depth)
             optimizers = [(name, self.optimizers[name])]
             if depth == 1:
@@ -136,14 +140,20 @@ class SegNetLoss(chainer.Chain):
             assert len(self.class_weights) == model.n_classes
 
     def __call__(self, x, t, depth=1):
-        y, optimizers = self.predictor(x, depth)
+        if not self.predictor.finetune:
+            self.y, optimizers = self.predictor(x, depth)
+        else:
+            self.y = self.predictor(x, depth)
         if hasattr(self, 'class_weights'):
             if isinstance(x.data, cuda.cupy.ndarray):
                 self.class_weights = cuda.to_gpu(
                     self.class_weights, device=x.data.device)
             self.loss = wsce.weighted_softmax_cross_entropy(
-                y, t, self.class_weights)
+                self.y, t, self.class_weights)
         else:
-            self.loss = F.softmax_cross_entropy(y, t)
+            self.loss = F.softmax_cross_entropy(self.y, t)
         reporter.report({'loss': self.loss}, self)
-        return self.loss, optimizers
+        if not self.predictor.finetune:
+            return self.loss, optimizers
+        else:
+            return self.loss

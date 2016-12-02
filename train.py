@@ -10,6 +10,7 @@ from __future__ import unicode_literals
 from chainer import iterators
 from chainer import serializers
 from chainer import training
+from chainer.training import updater as default_updater
 from chainer.training import extensions
 from lib import updater as updater_module
 from lib import CamVid
@@ -67,9 +68,12 @@ if __name__ == '__main__':
     valid_iter = iterators.SerialIterator(valid, args.valid_batchsize,
                                           repeat=False, shuffle=False)
 
-    updater = updater_module.Updater(
-        model, train_iter, devices, args.n_encdec)
-    updater.depth = args.train_depth
+    if not args.finetune:
+        updater = updater_module.Updater(
+            model, train_iter, devices, args.n_encdec)
+        updater.depth = args.train_depth
+    else:
+        updater = default_updater.ParallelUpdater(train_iter, optimizer)
 
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=result_dir)
     if args.resume is not None:
@@ -78,16 +82,24 @@ if __name__ == '__main__':
     # trainer.extend(
     #     extensions.Evaluator(valid_iter, model, device=devices['main']),
     #     trigger=(args.valid_freq, 'epoch'))
-    trainer.extend(extensions.dump_graph(
-        'main/loss', out_name='encdec{}.dot'.format(args.train_depth)))
+    graph_name = 'encdec{}.dot'.format(args.train_depth) \
+        if not args.finetune else 'encdec_finetune.dot'
+    trainer.extend(extensions.dump_graph('main/loss', out_name=graph_name))
+    if not args.finetune:
+        model_save_fn = 'encdec{.updater.depth}'.format(trainer) + \
+                 '_epoch_{.updater.epoch}.model')
+    else:
+        model_save_fn = 'encdec4_finetune_epoch_{.updater.epoch}.model'
     trainer.extend(
         extensions.snapshot_object(
-            model,
-            trigger=(args.snapshot_epoch, 'epoch'),
-            filename='encdec{.updater.depth}'.format(trainer) +
-                     '_epoch_{.updater.epoch}.model'))
+            model, trigger=(args.snapshot_epoch, 'epoch'),
+            filename=model_save_fn)
+    log_fn = 'log_encdec{}'.format(args.train_depth) \
+            if not args.finetune else 'log_encdec_finetune'
     trainer.extend(
-        extensions.LogReport(trigger=(args.show_log_iter, 'iteration')))
+        extensions.LogReport(
+            trigger=(args.show_log_iter, 'iteration'),
+            log_name=log_fn))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'iteration', 'main/loss', 'validation/main/loss']))
     trainer.extend(extensions.ProgressBar())

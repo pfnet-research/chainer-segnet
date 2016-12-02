@@ -35,6 +35,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_file', type=str, default='models/segnet.py')
     parser.add_argument('--model_name', type=str, default='SegNet')
     parser.add_argument('--n_classes', type=int, default=12)
+    parser.add_argument('--n_encdec', type=int, default=4)
     parser.add_argument('--snapshot', type=str)
     parser.add_argument('--img_dir', type=str, default='data/test')
     parser.add_argument('--out_dir', type=str)
@@ -48,9 +49,10 @@ if __name__ == '__main__':
         os.makedirs(args.out_dir)
 
     model = imp.load_source(args.model_name, args.model_file)
-    model = getattr(model, args.model_name)(args.n_classes)
+    model = getattr(model, args.model_name)(
+        n_encdec=args.n_encdec, n_classes=args.n_classes)
     param = np.load(args.snapshot)
-    prefix = 'updater/model:main/predictor'
+    prefix = 'predictor'
 
     # Load parameters
     for key, arr in six.iteritems(param):
@@ -90,11 +92,11 @@ if __name__ == '__main__':
         img_var = chainer.Variable(img, volatile='on')
 
         # Forward
-        ret = model(img_var)
+        ret = model(img_var, depth=args.n_encdec)
         ret = F.softmax(ret).data[0].transpose(1, 2, 0)
         if args.gpu >= 0:
             with chainer.cuda.Device(args.gpu):
-                ret = chainer.cuda.cupy.asnumpy(ret)
+                ret = chainer.cuda.to_cpu(ret)
 
         # Create output
         out = np.zeros((ret.shape[0], ret.shape[1], 3), dtype=np.uint8)

@@ -108,6 +108,9 @@ def get_args():
     parser.add_argument(
         '--ignore_labels', type=str, default='11',
         help='The label id that is ignored during training')
+    parser.add_argument(
+        '--finetune', action='store_true', default=False,
+        help='Train whole encoder-decorder pairs at a time.')
 
     # Dataset paths
     parser.add_argument(
