@@ -23,18 +23,10 @@ tar zxvf CamVid.tar.gz; rm -rf CamVid.tar.gz; mv CamVid data
 ## Training
 
 ```
-python train.py \
---opt Adam \
---gpu 0 \
---batchsize 16 \
---rotate \
---fliplr \
---use_class_weights \
---show_log_iter 1 \
---snapshot_epoch 10 \
---epoch 20 \
---train_depth 1
+bash experiments/train.sh
 ```
+
+### About train.py
 
 To use the given coefficients to weight the softmax loss class-wise, add `--use_class_weights` option to the above command.
 
@@ -42,16 +34,15 @@ Once the first training for the most outer encoder-decoder pair, start the train
 
 ```
 python train.py \
---opt Adam \
---gpu 0 \
---batchsize 16 \
---rotate \
---fliplr \
---use_class_weights \
+--seed 0 --gpu 1 \
+--opt Adam --adam_alpha 0.0001 --batchsize 16 \
+--rotate --fliplr --use_class_weights \
 --show_log_iter 1 \
---snapshot_epoch 10 \
+--snapshot_epoch 20 \
+--epoch 20 \
+--result_dir results \
 --train_depth 2 \
---resume results/****/EncDec1_epoch20
+--resume results/encdec1_epoch_20.model
 ```
 
 

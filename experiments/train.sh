@@ -9,7 +9,7 @@ init_train () {
     --rotate --fliplr --use_class_weights \
     --show_log_iter 1 \
     --snapshot_epoch 20 \
-    --epoch 1 \
+    --epoch 20 \
     --result_dir results \
     --train_depth 1
 }
