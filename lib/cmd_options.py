@@ -22,6 +22,9 @@ def get_args():
         '--model_name', type=str, default='SegNet',
         help='The model class name')
     parser.add_argument(
+        '--result_dir', type=str, default=None,
+        help='The directory path to store files')
+    parser.add_argument(
         '--loss_file', type=str, default='models/segnet.py',
         help='The filename that contains the definition of loss function')
     parser.add_argument(

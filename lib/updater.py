@@ -84,6 +84,9 @@ class Updater(updater.ParallelUpdater):
                 for i, opt in enumerate(opts.values()):
                     if self._devices[device_key] >= 0:
                         opt.target.to_gpu(self._devices[device_key])
+                    if self.iteration == 0:
+                        logging.info(
+                            'Train {}({})'.format(opt.target.name, opt.target))
                     optimizers.append(opt)
             else:
                 raise ValueError('Dataset should return a tuple.')

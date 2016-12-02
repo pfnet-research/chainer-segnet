@@ -20,11 +20,16 @@ from lib import get_model
 from lib import get_optimizer
 
 import json
-import six
+import os
 
 if __name__ == '__main__':
     args = get_args()
-    result_dir = create_result_dir(args.model_name)
+    if args.result_dir is None:
+        result_dir = create_result_dir(args.model_name)
+    else:
+        if not os.path.exists(args.result_dir):
+            os.makedirs(args.result_dir)
+        result_dir = args.result_dir
     json.dump(vars(args), open('{}/args.json'.format(result_dir), 'w'))
     create_logger(args, result_dir)
 
@@ -73,7 +78,8 @@ if __name__ == '__main__':
     # trainer.extend(
     #     extensions.Evaluator(valid_iter, model, device=devices['main']),
     #     trigger=(args.valid_freq, 'epoch'))
-    trainer.extend(extensions.dump_graph('main/loss'))
+    trainer.extend(extensions.dump_graph(
+        'main/loss', out_name='EncDec{}.dot'.format(args.train_depth)))
     trainer.extend(
         extensions.snapshot(
             trigger=(args.snapshot_epoch, 'epoch'),
