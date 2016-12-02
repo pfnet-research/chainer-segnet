@@ -8,6 +8,7 @@ from __future__ import unicode_literals
 import argparse
 import chainer
 import numpy
+import random
 
 
 def get_args():
@@ -42,7 +43,7 @@ def get_args():
         '--batchsize', type=int, default=8,
         help='minibatch size')
     parser.add_argument(
-        '--snapshot_epoch', type=int, default=1,
+        '--snapshot_epoch', type=int, default=10,
         help='The current learnt parameters in the model is saved every'
              'this epoch')
     parser.add_argument(
@@ -52,10 +53,14 @@ def get_args():
         '--valid_batchsize', type=int, default=16,
         help='The mini-batch size during validation loop')
     parser.add_argument(
-        '--show_log_iter', type=int, default=1,
+        '--show_log_iter', type=int, default=10,
         help='Show loss value per this iterations')
 
     # Settings
+    parser.add_argument(
+        '--train_depth', type=int, default=1,
+        help='The depth of an EncDec pair in the SegNet model to be trained.'
+             'This means the number of inside pairs of Encoder-Decoder.')
     parser.add_argument(
         '--shift_jitter', type=int, default=50,
         help='Shift jitter amount for data augmentation (typically 50)')
@@ -123,7 +128,7 @@ def get_args():
 
     # Optimization settings
     parser.add_argument(
-        '--opt', type=str, default='Adam',
+        '--opt', type=str, default='MomentumSGD',
         choices=['MomentumSGD', 'Adam', 'AdaGrad', 'RMSprop'],
         help='Optimization method')
     parser.add_argument('--weight_decay', type=float, default=0.0005)
@@ -140,10 +145,14 @@ def get_args():
         help='When the learning rate is decreased, this number will be'
              'multiplied')
     parser.add_argument('--seed', type=int, default=1701)
+
+    parser.add_argument('-f')  # To call this from jupyter notebook
+
     args = parser.parse_args()
     args.class_weights = [float(v) for v in args.class_weights.split(',')
                           if len(v) > 0]
     xp = chainer.cuda.cupy if chainer.cuda.available else numpy
+    random.seed(args.seed)
     xp.random.seed(args.seed)
     numpy.random.seed(args.seed)
     args.ignore_labels = [int(l) for l in args.ignore_labels.split(',')]

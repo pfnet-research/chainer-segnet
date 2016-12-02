@@ -12,6 +12,7 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import copy
+import logging
 import math
 import models.weighted_softmax_cross_entropy as wsce
 import numpy as np
@@ -57,7 +58,14 @@ class EncDec(chainer.Chain):
 
 class SegNet(chainer.Chain):
 
+    """SegNet model architecture.
+
+    This class has all Links to construct SegNet model and also optimizers to
+    optimize each part (Encoder-Decoder pair or conv_cls) of SegNet.
+    """
+
     def __init__(self, optimizer=None, n_encdec=4, n_classes=12, n_mid=64):
+        assert n_encdec >= 1
         w = math.sqrt(2)
         super(SegNet, self).__init__(
             conv_cls=L.Convolution2D(n_mid, n_classes, 1, 1, 0, w))
@@ -70,6 +78,11 @@ class SegNet(chainer.Chain):
             self.add_link(name, encdec)
             names.append(name)
 
+        # Add WeightDecay if it's specified by 'args'
+        if hasattr(optimizer, 'decay') \
+                and 'WeightDecay' not in optimizer._hooks:
+            optimizer.add_hook(chainer.optimizer.WeightDecay(optimizer.decay))
+
         # Setup each optimizer for each EncDec or conv_cls
         if optimizer is not None:
             self.optimizers = {}
@@ -77,7 +90,6 @@ class SegNet(chainer.Chain):
                 opt = copy.deepcopy(optimizer)
                 opt.setup(getattr(self, name))
                 self.optimizers[name] = opt
-            self.optimizer_orig = optimizer
 
         self.n_encdec = n_encdec
         self.n_classes = n_classes
@@ -90,18 +102,23 @@ class SegNet(chainer.Chain):
 
         for d in six.moves.range(1, depth + 1):
             encdec = getattr(self, 'encdec{}'.format(d))
+            encdec.inside = None
+        for d in six.moves.range(1, depth + 1):
+            encdec = getattr(self, 'encdec{}'.format(d))
             if depth >= d + 1:
                 encdec.inside = getattr(self, 'encdec{}'.format(d + 1))
         h = self.encdec1(h, train=self.train)
         h = self.conv_cls(h)
 
         if self.train:
-            optimizers = [self.optimizers['encdec{}'.format(depth)]]
+            name = 'encdec{}'.format(depth)
+            optimizers = [(name, self.optimizers[name])]
             if depth == 1:
                 # Optimize conv_cls only during training for encdec1
-                optimizers.append(self.optimizers['conv_cls'])
+                optimizers.append(('conv_cls', self.optimizers['conv_cls']))
+            # Number of EncDec trained at a time is always one
             assert 1 <= len(optimizers) <= 2
-            return h, optimizers
+            return h, dict(optimizers)
         else:
             return h
 
@@ -111,6 +128,7 @@ class SegNetLoss(chainer.Chain):
     def __init__(self, model, class_weights=None):
         super(SegNetLoss, self).__init__(predictor=model)
         if class_weights is not None:
+            logging.info('class_weights: {}'.format(class_weights))
             if not isinstance(class_weights, np.ndarray):
                 class_weights = np.asarray(class_weights, dtype=np.float32)
             self.class_weights = class_weights

@@ -46,7 +46,7 @@ def create_logger(args, result_dir):
 
 def get_model(
         model_file, model_name, loss_file, loss_name, n_classes,
-        class_weights, optimizer, n_encdec, train=False, result_dir=None):
+        class_weights, optimizer, n_encdec, train=True, result_dir=None):
     model = imp.load_source(model_name, model_file)
     model = getattr(model, model_name)
     loss = imp.load_source(loss_name, loss_file)
@@ -88,7 +88,6 @@ def get_optimizer(opt, lr=None, adam_alpha=None, adam_beta1=None,
 
     # The first model as the master model
     if opt == 'MomentumSGD':
-        optimizer.add_hook(
-            chainer.optimizer.WeightDecay(weight_decay))
+        optimizer.decay = weight_decay
 
     return optimizer

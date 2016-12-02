@@ -10,9 +10,8 @@ from __future__ import unicode_literals
 from chainer import iterators
 from chainer import serializers
 from chainer import training
-from chainer import Variable
 from chainer.training import extensions
-from chainer.training import updater
+from lib import updater as updater_module
 from lib import CamVid
 from lib import create_logger
 from lib import create_result_dir
@@ -20,11 +19,13 @@ from lib import get_args
 from lib import get_model
 from lib import get_optimizer
 
+import json
 import six
 
 if __name__ == '__main__':
     args = get_args()
     result_dir = create_result_dir(args.model_name)
+    json.dump(vars(args), open('{}/args.json'.format(result_dir), 'w'))
     create_logger(args, result_dir)
 
     # Initialize optimizer
@@ -61,4 +62,26 @@ if __name__ == '__main__':
     valid_iter = iterators.SerialIterator(valid, args.valid_batchsize,
                                           repeat=False, shuffle=False)
 
-    batch = train_iter.next()
+    updater = updater_module.Updater(
+        model, train_iter, devices, args.n_encdec)
+    updater.depth = args.train_depth
+
+    trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=result_dir)
+    if args.resume is not None:
+        serializers.load_npz(args.resume, trainer)
+
+    # trainer.extend(
+    #     extensions.Evaluator(valid_iter, model, device=devices['main']),
+    #     trigger=(args.valid_freq, 'epoch'))
+    trainer.extend(extensions.dump_graph('main/loss'))
+    trainer.extend(
+        extensions.snapshot(
+            trigger=(args.snapshot_epoch, 'epoch'),
+            filename='EncDec{.updater.depth}_epoch_{.updater.epoch}'))
+    trainer.extend(
+        extensions.LogReport(trigger=(args.show_log_iter, 'iteration')))
+    trainer.extend(extensions.PrintReport(
+        ['epoch', 'iteration', 'main/loss', 'validation/main/loss']))
+    trainer.extend(extensions.ProgressBar())
+
+    trainer.run()
