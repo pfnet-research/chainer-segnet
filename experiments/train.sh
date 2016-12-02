@@ -16,7 +16,7 @@ init_train () {
 
 train () {
     python train.py \
-    --seed 0 --gpu 1 \
+    --seed 0 --gpu 0 \
     --opt Adam --adam_alpha 0.0001 --batchsize 16 \
     --rotate --fliplr --use_class_weights \
     --show_log_iter 1 \
