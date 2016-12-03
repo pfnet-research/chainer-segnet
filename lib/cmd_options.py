@@ -91,6 +91,9 @@ def get_args():
         help='The number of Encoder-Decoder pairs that are included in the'
              ' Segnet model')
     parser.add_argument(
+        '--n_mid', type=int, default=64,
+        help='The number of channels of convolutions in EncDec unit')
+    parser.add_argument(
         '--mean', type=str, default=None,
         help='Mean npy over the training data')
     parser.add_argument(

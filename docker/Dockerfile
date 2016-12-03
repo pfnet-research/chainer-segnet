@@ -5,7 +5,7 @@ RUN apt-get update
 RUN apt-get -y \
 	-o Dpkg::Options::="--force-confdef" \
 	-o Dpkg::Options::="--force-confold" dist-upgrade
-RUN apt-get install -y zsh silversearcher-ag tmux git curl wget build-essential python-dev libgtk2.0-dev
+RUN apt-get install -y zsh silversearcher-ag tmux git curl wget build-essential python-dev libgtk2.0-dev vim
 RUN useradd -m -d /home/ubuntu ubuntu
 RUN echo "ubuntu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 RUN chown -R ubuntu:ubuntu /home/ubuntu

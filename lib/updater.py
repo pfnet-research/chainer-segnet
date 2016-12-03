@@ -84,7 +84,7 @@ class Updater(updater.ParallelUpdater):
                 for i, opt in enumerate(opts.values()):
                     if self._devices[device_key] >= 0:
                         opt.target.to_gpu(self._devices[device_key])
-                    if self.iteration == 0:
+                    if self.iteration == 1:
                         logging.info(
                             'Train {}({})'.format(opt.target.name, opt.target))
                     optimizers.append(opt)
@@ -102,6 +102,7 @@ class Updater(updater.ParallelUpdater):
             model_main.addgrads(model)
 
         for optimizer in optimizers:
+            optimizer.target.creator = None
             optimizer.update()
 
         for model in six.itervalues(models_others):

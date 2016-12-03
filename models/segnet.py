@@ -27,6 +27,7 @@ class EncDec(chainer.Chain):
             enc=L.Convolution2D(in_channel, n_mid, 7, 1, 3, w),
             bn_m=L.BatchNormalization(n_mid),
             dec=L.Convolution2D(n_mid, n_mid, 7, 1, 3, w),
+            bn_o=L.BatchNormalization(n_mid),
         )
         self.p = F.MaxPooling2D(2, 2, use_cudnn=False)
         self.inside = None
@@ -37,23 +38,17 @@ class EncDec(chainer.Chain):
             stride=(pooler.sy, pooler.sx), pad=(pooler.ph, pooler.pw),
             outsize=outsize)
 
-    def __call__(self, x, out_bn=True, train=True):
+    def __call__(self, x, train=True):
         # Encode
         h = self.p(F.relu(self.bn_m(self.enc(x), test=not train)))
 
         # Run the inside network
         if self.inside is not None:
-            h = self.inside(h)
+            h = self.inside(h, train)
 
         # Decode
         h = self.dec(self.upsampling_2d(self.p, h, x.shape[2:]))
-        if out_bn:
-            if not hasattr(self, 'bn_o'):
-                self.add_link('bn_o', L.BatchNormalization(64))
-                if isinstance(x.data, cuda.cupy.ndarray):
-                    self.bn_o.to_gpu(x.data.device)
-            h = self.bn_o(h, test=not train)
-        return h
+        return self.bn_o(h, test=not train)
 
 
 class SegNet(chainer.Chain):

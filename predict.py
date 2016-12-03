@@ -56,10 +56,12 @@ if __name__ == '__main__':
 
     # Load parameters
     for key, arr in six.iteritems(param):
+        print(key)
         if prefix in key:
             key = key.replace(prefix, '')
             names = [k for k in key.split('/') if len(k) > 0]
             link = model
+            print(names)
             for name in names[:-1]:
                 link = link.__dict__[name]
             if isinstance(link.__dict__[names[-1]], chainer.Variable):

@@ -10,6 +10,7 @@ from __future__ import unicode_literals
 from chainer import iterators
 from chainer import serializers
 from chainer import training
+from chainer.dataset import convert
 from chainer.training import updater as default_updater
 from chainer.training import extensions
 from lib import updater as updater_module
@@ -21,7 +22,24 @@ from lib import get_model
 from lib import get_optimizer
 
 import json
+import logging
 import os
+
+
+class TestModeEvaluator(extensions.Evaluator):
+
+    def __init__(self, iterator, target, converter=convert.concat_examples,
+                 device=None, eval_hook=None, eval_func=None):
+        super(TestModeEvaluator, self).__init__(
+            iterator, target, converter=convert.concat_examples, device,
+            eval_hook, eval_func)
+
+    def evaluate(self):
+        model = self.get_target('main')
+        model.train = False
+        ret = super(TestModeEvaluator, self).evaluate()
+        model.train = True
+        return ret
 
 if __name__ == '__main__':
     args = get_args()
@@ -44,7 +62,9 @@ if __name__ == '__main__':
     model = get_model(
         args.model_file, args.model_name, args.loss_file, args.loss_name,
         args.n_classes, args.class_weights if args.use_class_weights else None,
-        optimizer, args.n_encdec, True, result_dir)
+        optimizer, args.n_encdec, args.n_mid, args.finetune, True, result_dir)
+    if args.resume is not None:
+        serializers.load_npz(args.resume, model)
 
     # Prepare devices
     devices = {}
@@ -53,6 +73,8 @@ if __name__ == '__main__':
             devices['main'] = gid
         else:
             devices['gpu{}'.format(gid)] = gid
+    if devices['main'] >= 0:
+        model.to_gpu(devices['main'])
 
     # Setting up datasets
     train = CamVid(
@@ -73,29 +95,41 @@ if __name__ == '__main__':
             model, train_iter, devices, args.n_encdec)
         updater.depth = args.train_depth
     else:
-        updater = default_updater.ParallelUpdater(train_iter, optimizer)
+        logging.info('model links:')
+        for name, _ in model.namedlinks():
+            logging.info(name)
+        optimizer.setup(model)
+        updater = default_updater.ParallelUpdater(
+            train_iter, optimizer, devices=devices)
 
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=result_dir)
-    if args.resume is not None:
-        serializers.load_npz(args.resume, model)
 
-    # trainer.extend(
-    #     extensions.Evaluator(valid_iter, model, device=devices['main']),
-    #     trigger=(args.valid_freq, 'epoch'))
+    # Add Evaluator
+    trainer.extend(
+        TestModeEvaluator(valid_iter, model, device=devices['main']),
+        trigger=(args.valid_freq, 'epoch'))
+
+    # Add dump_graph
     graph_name = 'encdec{}.dot'.format(args.train_depth) \
         if not args.finetune else 'encdec_finetune.dot'
     trainer.extend(extensions.dump_graph('main/loss', out_name=graph_name))
+
+    # Add snapshot_object
     if not args.finetune:
         model_save_fn = 'encdec{.updater.depth}'.format(trainer) + \
-                 '_epoch_{.updater.epoch}.model')
+            '_epoch_{.updater.epoch}.model'
     else:
-        model_save_fn = 'encdec4_finetune_epoch_{.updater.epoch}.model'
+        model_save_fn = 'encdec4_finetune_epoch_' + '{.updater.epoch}.model'
     trainer.extend(
         extensions.snapshot_object(
             model, trigger=(args.snapshot_epoch, 'epoch'),
-            filename=model_save_fn)
-    log_fn = 'log_encdec{}'.format(args.train_depth) \
-            if not args.finetune else 'log_encdec_finetune'
+            filename=model_save_fn))
+
+    # Add Logger
+    if not args.finetune:
+        log_fn = 'log_encdec{}'.format(args.train_depth)
+    else:
+        log_fn = 'log_encdec_finetune'
     trainer.extend(
         extensions.LogReport(
             trigger=(args.show_log_iter, 'iteration'),
