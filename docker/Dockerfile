@@ -15,12 +15,12 @@ USER ubuntu
 WORKDIR /home/ubuntu
 ENV HOME /home/ubuntu
 
-RUN echo 'export PATH=/usr/local/cuda/bin:$PATH' >> $HOME/.zshrc
-RUN echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> $HOME/.zshrc
-RUN echo 'export CPATH=$HOME/cuda/include:$CPATH' >> $HOME/.zshrc
-RUN echo 'export LIBRARY_PATH=$HOME/cuda/lib64:$LIBRARY_PATH' >> $HOME/.zshrc
-RUN echo 'export LD_LIBRARY_PATH=$HOME/cuda/lib64:$LD_LIBRARY_PATH' >> $HOME/.zshrc
 RUN bash -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+RUN echo 'export PATH=/usr/local/cuda/bin:$PATH' >> /home/ubuntu/.zshrc
+RUN echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> /home/ubuntu/.zshrc
+RUN echo 'export CPATH=$HOME/cuda/include:$CPATH' >> /home/ubuntu/.zshrc
+RUN echo 'export LIBRARY_PATH=$HOME/cuda/lib64:$LIBRARY_PATH' >> /home/ubuntu/.zshrc
+RUN echo 'export LD_LIBRARY_PATH=$HOME/cuda/lib64:$LD_LIBRARY_PATH' >> /home/ubuntu/.zshrc
 
 RUN git clone https://github.com/yyuu/pyenv.git /home/ubuntu/.pyenv
 RUN echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /home/ubuntu/.zshrc

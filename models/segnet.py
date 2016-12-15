@@ -6,15 +6,14 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from chainer import cuda
 from chainer import reporter
+from models.softmax_cross_entropy import softmax_cross_entropy
 from models.upsampling_2d import upsampling_2d
 
 import chainer
 import chainer.functions as F
 import chainer.links as L
-import copy
 import logging
 import math
-import models.weighted_softmax_cross_entropy as wsce
 import numpy as np
 import six
 
@@ -59,96 +58,72 @@ class SegNet(chainer.Chain):
     optimize each part (Encoder-Decoder pair or conv_cls) of SegNet.
     """
 
-    def __init__(self, optimizer=None, n_encdec=4, n_classes=12, n_mid=64,
-                 finetune=False):
+    def __init__(self, optimizer=None, n_encdec=4, n_classes=12, in_channel=3,
+                 n_mid=64):
         assert n_encdec >= 1
         w = math.sqrt(2)
         super(SegNet, self).__init__(
             conv_cls=L.Convolution2D(n_mid, n_classes, 1, 1, 0, w))
 
         # Create and add EncDecs
-        names = ['conv_cls']
         for i in six.moves.range(1, n_encdec + 1):
             name = 'encdec{}'.format(i)
-            encdec = EncDec(n_mid if i > 1 else 3, n_mid)
-            self.add_link(name, encdec)
-            names.append(name)
-
-        # Setup each optimizer for each EncDec or conv_cls
-        if optimizer is not None and not finetune:
-            self.optimizers = {}
-            for name in names:
-                opt = copy.deepcopy(optimizer)
-                opt.setup(getattr(self, name))
-                self.optimizers[name] = opt
-
-            # Add WeightDecay if it's specified by 'args'
-            for name, opt in self.optimizers.items():
-                if hasattr(opt, 'decay') and 'WeightDecay' not in opt._hooks:
-                    opt.add_hook(chainer.optimizer.WeightDecay(opt.decay))
+            self.add_link(name, EncDec(n_mid if i > 1 else in_channel, n_mid))
+        for d in six.moves.range(1, n_encdec):
+            encdec = getattr(self, 'encdec{}'.format(d))
+            encdec.inside = getattr(self, 'encdec{}'.format(d + 1))
+            setattr(self, 'encdec{}'.format(d), encdec)
 
         self.n_encdec = n_encdec
         self.n_classes = n_classes
-        self.finetune = finetune
         self.train = True
+
+    def remove_link(self, name):
+        """Remove a link that has the given name from this model
+
+        Optimizer sees ``~Chain.namedparams()`` to know which parameters should
+        be updated. And inside of ``namedparams()``, ``self._children`` is
+        called to get names of all links included in the Chain.
+        """
+        self._children.remove(name)
+
+    def recover_link(self, name):
+        self._children.append(name)
 
     def __call__(self, x, depth=1):
         assert 1 <= depth <= self.n_encdec
-        if self.finetune:
-            depth = self.n_encdec
-
         h = F.local_response_normalization(x, 5, 1, 0.0005, 0.75)
 
-        for d in six.moves.range(1, depth + 1):
-            encdec = getattr(self, 'encdec{}'.format(d))
-            encdec.inside = None
-        for d in six.moves.range(1, depth + 1):
-            encdec = getattr(self, 'encdec{}'.format(d))
-            if depth >= d + 1:
-                encdec.inside = getattr(self, 'encdec{}'.format(d + 1))
+        # Unchain the inner EncDecs after the given depth
+        encdec = getattr(self, 'encdec{}'.format(depth))
+        encdec.inside = None
+
         h = self.encdec1(h, train=self.train)
         h = self.conv_cls(h)
-
-        if self.train and not self.finetune:
-            name = 'encdec{}'.format(depth)
-            optimizers = [(name, self.optimizers[name])]
-            if depth == 1:
-                # Optimize conv_cls only during training for encdec1
-                optimizers.append(('conv_cls', self.optimizers['conv_cls']))
-            # Number of EncDec trained at a time is always one
-            assert 1 <= len(optimizers) <= 2
-            return h, dict(optimizers)
-        else:
-            return h
+        return h
 
 
 class SegNetLoss(chainer.Chain):
 
-    def __init__(self, model, class_weights=None):
+    def __init__(self, model, class_weight=None, train_depth=1):
         super(SegNetLoss, self).__init__(predictor=model)
-        if class_weights is not None:
-            logging.info('class_weights: {}'.format(class_weights))
-            if not isinstance(class_weights, np.ndarray):
-                class_weights = np.asarray(class_weights, dtype=np.float32)
-            self.class_weights = class_weights
-            assert self.class_weights.ndim == 1
-            assert len(self.class_weights) == model.n_classes
+        if class_weight is not None:
+            logging.info('class_weight: {}'.format(class_weight))
+            if not isinstance(class_weight, np.ndarray):
+                class_weight = np.asarray(class_weight, dtype=np.float32)
+            self.class_weight = class_weight
+            assert len(self.class_weight) == model.n_classes
+        self.train_depth = train_depth
 
-    def __call__(self, x, t, depth=1):
-        if not self.predictor.finetune:
-            self.y, optimizers = self.predictor(x, depth)
-        else:
-            self.y = self.predictor(x, depth)
-        if hasattr(self, 'class_weights'):
-            if isinstance(x.data, cuda.cupy.ndarray):
-                self.class_weights = cuda.to_gpu(
-                    self.class_weights, device=x.data.device)
-            self.loss = wsce.weighted_softmax_cross_entropy(
-                self.y, t, self.class_weights)
+    def __call__(self, x, t):
+        self.y = self.predictor(x, self.train_depth)
+        if hasattr(self, 'class_weight'):
+            if isinstance(x.data.__class__cuda.cupy.ndarray) \
+                    and not isinstance(self.class_weight, cuda.cupy.ndarray):
+                self.class_weight = cuda.to_gpu(
+                    self.class_weight, device=x.data.device)
+            self.loss = softmax_cross_entropy(self.y, t, self.class_weight)
         else:
             self.loss = F.softmax_cross_entropy(self.y, t)
         reporter.report({'loss': self.loss}, self)
-        if not self.predictor.finetune:
-            return self.loss, optimizers
-        else:
-            return self.loss
+        return self.loss

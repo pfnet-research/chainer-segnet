@@ -31,8 +31,7 @@ class TestModeEvaluator(extensions.Evaluator):
     def __init__(self, iterator, target, converter=convert.concat_examples,
                  device=None, eval_hook=None, eval_func=None):
         super(TestModeEvaluator, self).__init__(
-            iterator, target, converter=convert.concat_examples, device,
-            eval_hook, eval_func)
+            iterator, target, converter, eval_hook, eval_func)
 
     def evaluate(self):
         model = self.get_target('main')
