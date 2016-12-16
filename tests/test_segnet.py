@@ -12,6 +12,7 @@ from models import segnet
 
 import numpy as np
 import os
+import re
 import six
 import subprocess
 import unittest
@@ -33,6 +34,47 @@ class TestSegNet(unittest.TestCase):
     def setUp(self):
         pass
 
+    def test_backward(self):
+        x = np.random.uniform(-1, 1, self.x_shape)
+        x = Variable(x.astype(np.float32))
+        t = np.random.randint(
+            0, 12, (self.x_shape[0], self.x_shape[2], self.x_shape[3]))
+        t = Variable(t.astype(np.int32))
+
+        for depth in six.moves.range(1, self.n_encdec + 1):
+            model = segnet.SegNet(n_encdec=self.n_encdec, n_classes=12,
+                                  in_channel=self.x_shape[1])
+            model = segnet.SegNetLoss(
+                model, class_weight=None, train_depth=depth)
+            loss = model(x, t)
+
+            model.cleargrads()
+            for d in range(1, self.n_encdec + 1):
+                if d != depth:
+                    model.predictor.remove_link('encdec{}'.format(d))
+            loss.backward()
+
+            cg = build_computational_graph(
+                [loss],
+                variable_style=_var_style,
+                function_style=_func_style
+            ).dump()
+
+            fn = 'tests/SegNet_bw_depth-{}_{}.dot'.format(self.n_encdec, depth)
+            if os.path.exists(fn):
+                continue
+            with open(fn, 'w') as f:
+                f.write(cg)
+            subprocess.call(
+                'dot -Tpng {} -o {}'.format(
+                    fn, fn.replace('.dot', '.png')), shell=True)
+
+            for name, param in model.namedparams():
+                encdec_depth = re.search('encdec([0-9]+)', name)
+                if encdec_depth:
+                    ed = int(encdec_depth.groups()[0])
+                    self.assertEqual(ed, depth)
+
     def test_save_normal_graphs(self):
         x = np.random.uniform(-1, 1, self.x_shape)
         x = Variable(x.astype(np.float32))
@@ -49,7 +91,7 @@ class TestSegNet(unittest.TestCase):
             for e in range(1, self.n_encdec + 1):
                 self.assertTrue('encdec{}'.format(e) in model._children)
 
-            fn = 'tests/SegNet_x_depth-{}.dot'.format(depth)
+            fn = 'tests/SegNet_x_depth-{}_{}.dot'.format(self.n_encdec, depth)
             if os.path.exists(fn):
                 continue
             with open(fn, 'w') as f:
@@ -59,7 +101,6 @@ class TestSegNet(unittest.TestCase):
                     fn, fn.replace('.dot', '.png')), shell=True)
 
     def test_save_loss_graphs_no_class_weight(self):
-        opt = optimizers.Adam()
         x = np.random.uniform(-1, 1, self.x_shape)
         x = Variable(x.astype(np.float32))
         t = np.random.randint(
@@ -67,7 +108,7 @@ class TestSegNet(unittest.TestCase):
         t = Variable(t.astype(np.int32))
 
         for depth in six.moves.range(1, self.n_encdec + 1):
-            model = segnet.SegNet(opt, n_encdec=self.n_encdec, n_classes=12,
+            model = segnet.SegNet(n_encdec=self.n_encdec, n_classes=12,
                                   in_channel=self.x_shape[1])
             model = segnet.SegNetLoss(
                 model, class_weight=None, train_depth=depth)
@@ -81,7 +122,7 @@ class TestSegNet(unittest.TestCase):
                 self.assertTrue(
                     'encdec{}'.format(e) in model.predictor._children)
 
-            fn = 'tests/SegNet_xt_depth-{}.dot'.format(depth)
+            fn = 'tests/SegNet_xt_depth-{}_{}.dot'.format(self.n_encdec, depth)
             if os.path.exists(fn):
                 continue
             with open(fn, 'w') as f:

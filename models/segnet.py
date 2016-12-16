@@ -58,8 +58,7 @@ class SegNet(chainer.Chain):
     optimize each part (Encoder-Decoder pair or conv_cls) of SegNet.
     """
 
-    def __init__(self, optimizer=None, n_encdec=4, n_classes=12, in_channel=3,
-                 n_mid=64):
+    def __init__(self, n_encdec=4, n_classes=12, in_channel=3, n_mid=64):
         assert n_encdec >= 1
         w = math.sqrt(2)
         super(SegNet, self).__init__(
