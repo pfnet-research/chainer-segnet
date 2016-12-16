@@ -44,7 +44,7 @@ finetune () {
 
 
 init_train
-train 2 results/encdec1_epoch_100.model
-train 3 results/encdec2_epoch_100.model
-train 4 results/encdec3_epoch_100.model
-finetune 4 results/encdec4_epoch_100.model
+# train 2 results/encdec1_epoch_100.model
+# train 3 results/encdec2_epoch_100.model
+# train 4 results/encdec3_epoch_100.model
+# finetune 4 results/encdec4_epoch_100.model

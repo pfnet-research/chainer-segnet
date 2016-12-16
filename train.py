@@ -10,10 +10,8 @@ from __future__ import unicode_literals
 from chainer import iterators
 from chainer import serializers
 from chainer import training
-from chainer.dataset import convert
-from chainer.training import updater as default_updater
 from chainer.training import extensions
-from lib import updater as updater_module
+from chainer.training import updater
 from lib import CamVid
 from lib import create_logger
 from lib import create_result_dir
@@ -24,21 +22,6 @@ from lib import get_optimizer
 import json
 import logging
 import os
-
-
-class TestModeEvaluator(extensions.Evaluator):
-
-    def __init__(self, iterator, target, converter=convert.concat_examples,
-                 device=None, eval_hook=None, eval_func=None):
-        super(TestModeEvaluator, self).__init__(
-            iterator, target, converter, eval_hook, eval_func)
-
-    def evaluate(self):
-        model = self.get_target('main')
-        model.train = False
-        ret = super(TestModeEvaluator, self).evaluate()
-        model.train = True
-        return ret
 
 if __name__ == '__main__':
     args = get_args()
@@ -51,19 +34,19 @@ if __name__ == '__main__':
     json.dump(vars(args), open('{}/args.json'.format(result_dir), 'w'))
     create_logger(args, result_dir)
 
+    # Instantiate model
+    model = get_model(
+        args.model_file, args.model_name, args.loss_file, args.loss_name,
+        args.class_weights if args.use_class_weights else None, args.n_encdec,
+        args.n_classes, args.in_channel, args.n_mid, args.train_depth,
+        result_dir)
+
     # Initialize optimizer
     optimizer = get_optimizer(
         args.opt, args.lr, adam_alpha=args.adam_alpha,
         adam_beta1=args.adam_beta1, adam_beta2=args.adam_beta2,
         adam_eps=args.adam_eps, weight_decay=args.weight_decay)
-
-    # Instantiate model
-    model = get_model(
-        args.model_file, args.model_name, args.loss_file, args.loss_name,
-        args.n_classes, args.class_weights if args.use_class_weights else None,
-        optimizer, args.n_encdec, args.n_mid, args.finetune, True, result_dir)
-    if args.resume is not None:
-        serializers.load_npz(args.resume, model)
+    optimizer.setup(model)
 
     # Prepare devices
     devices = {}
@@ -72,8 +55,6 @@ if __name__ == '__main__':
             devices['main'] = gid
         else:
             devices['gpu{}'.format(gid)] = gid
-    if devices['main'] >= 0:
-        model.to_gpu(devices['main'])
 
     # Setting up datasets
     train = CamVid(
@@ -83,29 +64,20 @@ if __name__ == '__main__':
     valid = CamVid(
         args.valid_img_dir, args.valid_lbl_dir, args.valid_list_fn, args.mean,
         args.std, ignore_labels=args.ignore_labels)
-    print('train: {}, valid: {}'.format(len(train), len(valid)))
+    logging.info('train: {}, valid: {}'.format(len(train), len(valid)))
 
     train_iter = iterators.MultiprocessIterator(train, args.batchsize)
     valid_iter = iterators.SerialIterator(valid, args.valid_batchsize,
                                           repeat=False, shuffle=False)
 
-    if not args.finetune:
-        updater = updater_module.Updater(
-            model, train_iter, devices, args.n_encdec)
-        updater.depth = args.train_depth
-    else:
-        logging.info('model links:')
-        for name, _ in model.namedlinks():
-            logging.info(name)
-        optimizer.setup(model)
-        updater = default_updater.ParallelUpdater(
-            train_iter, optimizer, devices=devices)
-
+    updater = updater.ParallelUpdater(train_iter, optimizer, devices=devices)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=result_dir)
+    if args.resume is not None:
+        serializers.load_npz(args.resume, trainer)
 
     # Add Evaluator
     trainer.extend(
-        TestModeEvaluator(valid_iter, model, device=devices['main']),
+        extensions.Evaluator(valid_iter, model, device=devices['main']),
         trigger=(args.valid_freq, 'epoch'))
 
     # Add dump_graph
@@ -115,7 +87,7 @@ if __name__ == '__main__':
 
     # Add snapshot_object
     if not args.finetune:
-        model_save_fn = 'encdec{.updater.depth}'.format(trainer) + \
+        model_save_fn = 'encdec{}'.format(args.train_depth) + \
             '_epoch_{.updater.epoch}.model'
     else:
         model_save_fn = 'encdec4_finetune_epoch_' + '{.updater.epoch}.model'

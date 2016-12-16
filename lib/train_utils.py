@@ -45,17 +45,17 @@ def create_logger(args, result_dir):
 
 
 def get_model(
-        model_file, model_name, loss_file, loss_name, n_classes, class_weights,
-        optimizer, n_encdec, n_mid, finetune, train=True, result_dir=None):
+        model_file, model_name, loss_file, loss_name, class_weights, n_encdec,
+        n_classes, in_channel, n_mid, train_depth=None, result_dir=None):
     model = imp.load_source(model_name, model_file)
     model = getattr(model, model_name)
     loss = imp.load_source(loss_name, loss_file)
     loss = getattr(loss, loss_name)
 
     # Initialize
-    model = model(optimizer, n_encdec, n_classes, n_mid, finetune)
-    if train:
-        model = loss(model, class_weights)
+    model = model(n_encdec, n_classes, in_channel, n_mid)
+    if train_depth:
+        model = loss(model, class_weights, train_depth)
 
     # Copy files
     if result_dir is not None:

@@ -117,11 +117,12 @@ class SegNetLoss(chainer.Chain):
     def __call__(self, x, t):
         self.y = self.predictor(x, self.train_depth)
         if hasattr(self, 'class_weight'):
-            if isinstance(x.data.__class__cuda.cupy.ndarray) \
+            if isinstance(x.data, cuda.cupy.ndarray) \
                     and not isinstance(self.class_weight, cuda.cupy.ndarray):
                 self.class_weight = cuda.to_gpu(
                     self.class_weight, device=x.data.device)
-            self.loss = softmax_cross_entropy(self.y, t, self.class_weight)
+            self.loss = softmax_cross_entropy(
+                self.y, t, class_weight=self.class_weight)
         else:
             self.loss = F.softmax_cross_entropy(self.y, t)
         reporter.report({'loss': self.loss}, self)
