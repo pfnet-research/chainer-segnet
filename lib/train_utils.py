@@ -56,6 +56,11 @@ def get_model(
     model = model(n_encdec, n_classes, in_channel, n_mid)
     if train_depth:
         model = loss(model, class_weights, train_depth)
+        for d in range(1, n_encdec + 1):
+            if d != train_depth:
+                model.predictor.remove_link('encdec{}'.format(d))
+        if train_depth > 1:
+            model.predictor.remove_link('conv_cls')
 
     # Copy files
     if result_dir is not None:

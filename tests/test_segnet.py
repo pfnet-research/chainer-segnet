@@ -10,6 +10,7 @@ from chainer import Variable
 from chainer.computational_graph import build_computational_graph
 from models import segnet
 
+import copy
 import numpy as np
 import os
 import re
@@ -25,34 +26,100 @@ if cuda.available:
 
 
 @testing.parameterize(*testing.product({
-    'n_encdec': [1, 3, 4],
-    'n_classes': [1, 4, 5],
-    'x_shape': [(4, 3, 5, 7), (1, 2, 4, 6)],
+    'n_encdec': [1, 3, 4, 5],
+    'n_classes': [2, 3],
+    'n_mid': [2, 16, 32],
+    'x_shape': [(4, 3, 5, 7), (2, 2, 4, 6)],
 }))
 class TestSegNet(unittest.TestCase):
 
     def setUp(self):
         pass
 
-    def test_backward(self):
+    def get_xt(self):
         x = np.random.uniform(-1, 1, self.x_shape)
         x = Variable(x.astype(np.float32))
         t = np.random.randint(
-            0, 12, (self.x_shape[0], self.x_shape[2], self.x_shape[3]))
+            0, self.n_classes,
+            (self.x_shape[0], self.x_shape[2], self.x_shape[3]))
         t = Variable(t.astype(np.int32))
+        return x, t
 
+    def test_remove_link(self):
+        opt = optimizers.MomentumSGD(lr=0.01)
+        # Update each depth
         for depth in six.moves.range(1, self.n_encdec + 1):
-            model = segnet.SegNet(n_encdec=self.n_encdec, n_classes=12,
-                                  in_channel=self.x_shape[1])
+            model = segnet.SegNet(self.n_encdec, self.n_classes,
+                                  self.x_shape[1], self.n_mid)
             model = segnet.SegNetLoss(
                 model, class_weight=None, train_depth=depth)
-            loss = model(x, t)
+            opt.setup(model)
 
-            model.cleargrads()
+            # Deregister non-target links from opt
+            if depth > 1:
+                model.predictor.remove_link('conv_cls')
             for d in range(1, self.n_encdec + 1):
                 if d != depth:
                     model.predictor.remove_link('encdec{}'.format(d))
+
+            for name, link in model.namedparams():
+                if depth > 1:
+                    self.assertTrue(
+                        'encdec{}'.format(depth) in name)
+                else:
+                    self.assertTrue(
+                        'encdec{}'.format(depth) in name or 'conv_cls' in name)
+
+    def test_backward(self):
+        opt = optimizers.MomentumSGD(lr=0.01)
+        # Update each depth
+        for depth in six.moves.range(1, self.n_encdec + 1):
+            model = segnet.SegNet(self.n_encdec, self.n_classes,
+                                  self.x_shape[1], self.n_mid)
+            model = segnet.SegNetLoss(
+                model, class_weight=None, train_depth=depth)
+            opt.setup(model)
+
+            # Deregister non-target links from opt
+            if depth > 1:
+                model.predictor.remove_link('conv_cls')
+            for d in range(1, self.n_encdec + 1):
+                if d != depth:
+                    model.predictor.remove_link('encdec{}'.format(d))
+
+            # Keep the initial values
+            prev_params = {
+                'conv_cls': copy.deepcopy(model.predictor.conv_cls.W.data)}
+            for d in range(1, self.n_encdec + 1):
+                name = '/encdec{}/enc/W'.format(d)
+                encdec = getattr(model.predictor, 'encdec{}'.format(d))
+                prev_params[name] = copy.deepcopy(encdec.enc.W.data)
+                self.assertTrue(prev_params[name] is not encdec.enc.W.data)
+
+            # Update the params
+            x, t = self.get_xt()
+            loss = model(x, t)
+            loss.data *= 1E20
+            model.cleargrads()
             loss.backward()
+            opt.update()
+
+            for d in range(1, self.n_encdec + 1):
+                # The weight only in the target layer should be updated
+                c = self.assertFalse if d == depth else self.assertTrue
+                encdec = getattr(opt.target.predictor, 'encdec{}'.format(d))
+                self.assertTrue(hasattr(encdec, 'enc'))
+                self.assertTrue(hasattr(encdec.enc, 'W'))
+                self.assertTrue('/encdec{}/enc/W'.format(d) in prev_params)
+                c(np.array_equal(encdec.enc.W.data,
+                                 prev_params['/encdec{}/enc/W'.format(d)]),
+                  msg='depth:{} d:{} diff:{}'.format(
+                  depth, d, np.sum(encdec.enc.W.data -
+                                   prev_params['/encdec{}/enc/W'.format(d)])))
+            if depth == 1:
+                # The weight in the last layer should be updated
+                self.assertFalse(np.allclose(model.predictor.conv_cls.W.data,
+                                             prev_params['conv_cls']))
 
             cg = build_computational_graph(
                 [loss],

@@ -13,11 +13,13 @@ This is an unofficial implementation of SegNet. This implementation doesn't use 
 - OpenCV 3.1.0
     - `conda install -c https://conda.binstar.org/menpo opencv3`
 
-## Dataset Download
+## Download Dataset
 
 ```
-wget https://dl.dropboxusercontent.com/u/2498135/segnet/CamVid.tar.gz
-tar zxvf CamVid.tar.gz; rm -rf CamVid.tar.gz; mv CamVid data
+wget https://github.com/alexgkendall/SegNet-Tutorial/archive/master.zip
+unzip master.zip && rm -rf master.zip
+mv SegNet-Tutorial-master/CamVid data
+rm -rf mv SegNet-Tutorial-master
 ```
 
 ## Training

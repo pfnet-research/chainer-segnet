@@ -5,13 +5,14 @@ export CHAINER_SEED=2016
 init_train () {
     python train.py \
     --seed 2016 --gpu 0 --batchsize 16 \
-    --opt MomentumSGD --lr 0.0001 \
+    --opt Adam --adam_alpha 0.001 \
     --rotate --fliplr --use_class_weights \
     --show_log_iter 1 \
     --snapshot_epoch 10 \
     --valid_freq 1 \
     --epoch 100 \
     --result_dir results \
+    --n_encdec 4 \
     --train_depth 1
 }
 

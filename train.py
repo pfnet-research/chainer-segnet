@@ -66,10 +66,12 @@ if __name__ == '__main__':
         args.std, ignore_labels=args.ignore_labels)
     logging.info('train: {}, valid: {}'.format(len(train), len(valid)))
 
+    # Create iterators
     train_iter = iterators.MultiprocessIterator(train, args.batchsize)
     valid_iter = iterators.SerialIterator(valid, args.valid_batchsize,
                                           repeat=False, shuffle=False)
 
+    # Create updater
     updater = updater.ParallelUpdater(train_iter, optimizer, devices=devices)
     trainer = training.Trainer(updater, (args.epoch, 'epoch'), out=result_dir)
     if args.resume is not None:
@@ -92,9 +94,7 @@ if __name__ == '__main__':
     else:
         model_save_fn = 'encdec4_finetune_epoch_' + '{.updater.epoch}.model'
     trainer.extend(
-        extensions.snapshot_object(
-            model, trigger=(args.snapshot_epoch, 'epoch'),
-            filename=model_save_fn))
+        extensions.snapshot(), trigger=(args.snapshot_epoch, 'epoch'))
 
     # Add Logger
     if not args.finetune:
