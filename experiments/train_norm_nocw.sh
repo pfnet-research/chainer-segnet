@@ -7,7 +7,7 @@ gpu_id=0
 
 init_train () {
     python train.py \
-    --seed 2016 --gpu ${gpu_id} --batchsize 16 \
+    --seed 2016 --gpus ${gpu_id} --batchsize 16 \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
     --rotate --fliplr \
@@ -22,7 +22,7 @@ init_train () {
 
 train () {
     python train.py \
-    --seed 2016 --gpu ${gpu_id} --batchsize 16 \
+    --seed 2016 --gpus ${gpu_id} --batchsize 16 \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
     --opt Adam --adam_alpha 0.0001 \
@@ -38,7 +38,7 @@ train () {
 
 finetune () {
     python train.py \
-    --seed 2016 --gpu ${gpu_id} --batchsize 16 \
+    --seed 2016 --gpus ${gpu_id} --batchsize 16 \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
     --opt Adam --adam_alpha 0.0001 \

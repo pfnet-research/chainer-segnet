@@ -3,11 +3,12 @@
 export CHAINER_SEED=2016
 
 result_dir=results_`date "+%Y-%m-%d_%H%M%S"`
-gpu_id=0
+gpu_id=0,1,2,3
 n_encdec=4
+batchsize=64
 
 python train.py \
---seed 2016 --gpu ${gpu_id} --batchsize 16 \
+--seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
 --opt MomentumSGD --lr 0.01 \
 --rotate --fliplr --use_class_weight \
 --snapshot_epoch 10 \
@@ -18,7 +19,7 @@ python train.py \
 --finetune
 
 python train.py \
---seed 2016 --gpu ${gpu_id} --batchsize 16 \
+--seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
 --opt MomentumSGD --lr 0.001 \
 --rotate --fliplr --use_class_weight \
 --snapshot_epoch 10 \
@@ -30,7 +31,7 @@ python train.py \
 --resume ${result_dir}/encdec4_finetune_epoch_200.trainer
 
 python train.py \
---seed 2016 --gpu ${gpu_id} --batchsize 16 \
+--seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
 --opt MomentumSGD --lr 0.0001 \
 --rotate --fliplr --use_class_weight \
 --snapshot_epoch 10 \
@@ -42,7 +43,7 @@ python train.py \
 --resume ${result_dir}/encdec4_finetune_epoch_400.trainer
 
 python train.py \
---seed 2016 --gpu ${gpu_id} --batchsize 16 \
+--seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
 --opt MomentumSGD --lr 0.00001 \
 --rotate --fliplr --use_class_weight \
 --snapshot_epoch 10 \
