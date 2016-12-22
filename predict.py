@@ -35,6 +35,7 @@ colors = [Sky, Building, Pole, Road, Pavement, Tree, SignSymbol, Fence,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--train_depth', type=int)
     parser.add_argument('--saved_args', type=str, default='results/args.json')
     parser.add_argument('--snapshot', type=str)
     parser.add_argument('--test_img_dir', type=str, default='data/test')
@@ -52,36 +53,38 @@ if __name__ == '__main__':
     model = imp.load_source(
         loaded_args['model_name'], loaded_args['model_file'])
     model = getattr(model, loaded_args['model_name'])(
-        n_encdec=loaded_args['n_encdec'], n_classes=loaded_args['n_classes'])
-
-    for d in range(1, loaded_args['n_encdec'] + 1):
-        if d != loaded_args['train_depth']:
-            model.remove_link('encdec{}'.format(d))
-    if loaded_args['train_depth'] > 1:
-        model.remove_link('conv_cls')
+        loaded_args['n_encdec'], loaded_args['n_classes'],
+        loaded_args['in_channel'], loaded_args['n_mid'])
 
     # Load parameters
-    params = np.load(args.snapshot)
-    model_params = {}
-    for p in params.keys():
-        if 'updater/model:main/predictor' in p:
-            model_params[
-                p.replace('updater/model:main/predictor/', '')] = params[p]
-    d = NpzDeserializer(model_params)
-    d.load(model)
+    param = np.load(args.snapshot)
+    prefix = 'updater/model:main/predictor'
+    for key, arr in six.iteritems(param):
+        if prefix in key:
+            key = key.replace(prefix, '')
+            names = [k for k in key.split('/') if len(k) > 0]
+            link = model
+            for name in names[:-1]:
+                link = link.__dict__[name]
+            if isinstance(link.__dict__[names[-1]], chainer.Variable):
+                link.__dict__[names[-1]] = chainer.Variable(arr, volatile='on')
+            else:
+                link.__dict__[names[-1]] = arr
 
     if args.gpu >= 0:
         model.to_gpu(args.gpu)
+        print('Model is transferred to GPU: {}'.format(args.gpu))
     model.train = False
+
+    print(dir(model))
 
     mean = None if args.mean is None else np.load(args.mean)
     std = None if args.std is None else np.load(args.std)
 
     for img_fn in sorted(glob.glob('{}/*.png'.format(args.test_img_dir))):
-        print(img_fn)
-
         # Load & prepare image
         img = cv.imread(img_fn).astype(np.float)
+        print(img_fn, img.shape)
         if mean is not None:
             img -= mean
         if std is not None:
@@ -96,7 +99,7 @@ if __name__ == '__main__':
         img_var = chainer.Variable(img, volatile='on')
 
         # Forward
-        ret = model(img_var, depth=loaded_args['train_depth'])
+        ret = model(img_var, depth=args.train_depth)
         ret = F.softmax(ret).data[0].transpose(1, 2, 0)
         if args.gpu >= 0:
             with chainer.cuda.Device(args.gpu):

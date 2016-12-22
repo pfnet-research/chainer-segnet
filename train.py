@@ -32,7 +32,8 @@ def recover_links(trainer):
     for d in range(1, n_encdec + 1):
         if d != train_depth:
             model.predictor.recover_link('encdec{}'.format(d))
-    model.predictor.recover_link('conv_cls')
+    if train_depth == 1:
+        model.predictor.recover_link('conv_cls')
 
 
 @training.make_extension(default_name='remove_links')

@@ -3,17 +3,16 @@
 export CHAINER_SEED=2016
 
 result_dir=results_`date "+%Y-%m-%d_%H%M%S"`
-gpu_id=1
+gpu_id=0
 
 init_train () {
     python train.py \
     --seed 2016 --gpu ${gpu_id} --batchsize 16 \
     --rotate --fliplr --use_class_weights \
     --opt Adam --adam_alpha 0.0001 \
-    --show_log_iter 1 \
     --snapshot_epoch 10 \
-    --valid_freq 1 \
-    --epoch 100 \
+    --valid_freq 10 \
+    --epoch 200 \
     --result_dir ${result_dir} \
     --n_encdec 4 \
     --train_depth 1
@@ -24,10 +23,11 @@ train () {
     --seed 2016 --gpu ${gpu_id} --batchsize 16 \
     --opt Adam --adam_alpha 0.0001 \
     --rotate --fliplr --use_class_weights \
-    --show_log_iter 1 \
     --snapshot_epoch 10 \
-    --epoch 100 \
+    --valid_freq 10 \
+    --epoch $3 \
     --result_dir ${result_dir} \
+    --n_encdec 4 \
     --train_depth $1 \
     --resume $2
 }
@@ -37,18 +37,18 @@ finetune () {
     --seed 2016 --gpu ${gpu_id} --batchsize 16 \
     --opt Adam --adam_alpha 0.0001 \
     --rotate --fliplr --use_class_weights \
-    --show_log_iter 1 \
     --snapshot_epoch 10 \
-    --epoch 100 \
+    --valid_freq 10 \
+    --epoch $3 \
     --result_dir ${result_dir} \
+    --n_encdec 4 \
     --train_depth $1 \
     --finetune \
     --resume $2
 }
 
-
 init_train
-train 2 ${result_dir}/encdec1_epoch_100.trainer
-train 3 ${result_dir}/encdec2_epoch_100.trainer
-train 4 ${result_dir}/encdec3_epoch_100.trainer
-finetune 4 ${result_dir}/encdec4_epoch_100.model
+train 2 ${result_dir}/encdec1_epoch_100.trainer 400
+train 3 ${result_dir}/encdec2_epoch_200.trainer 600
+train 4 ${result_dir}/encdec3_epoch_300.trainer 800
+finetune 4 ${result_dir}/encdec4_epoch_400.trainer 1000
