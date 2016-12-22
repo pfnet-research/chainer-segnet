@@ -89,7 +89,7 @@ class CamVid(dataset_mixin.DatasetMixin):
             mat = cv.getRotationMatrix2D((w // 2, h // 2), s, 1)
             img = cv.warpAffine(img, mat, (w, h), flags=cv.INTER_NEAREST)
             lbl = cv.warpAffine(lbl.astype(np.float), mat,
-                                (w, h), flags=cv.INTER_NEAREST)
+                                (w, h), flags=cv.INTER_NEAREST, borderValue=-1)
             lbl = lbl.astype(np.int32)
 
         if self.fliplr and np.random.randint(0, 2) == 1:
