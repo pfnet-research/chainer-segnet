@@ -1,5 +1,6 @@
 # SegNet
-SegNet implementation &amp; experiments written in Chainer
+
+SegNet implementation & experiments written in Chainer
 
 This is an unofficial implementation of SegNet. This implementation doesn't use L-BFGS for optimization. This uses Adam with the default settings.
 
@@ -11,9 +12,9 @@ This is an unofficial implementation of SegNet. This implementation doesn't use 
 - NumPy 1.11.0+
 - six 1.10.0
 - OpenCV 3.1.0
-    - `conda install -c https://conda.binstar.org/menpo opencv3`
+  - `conda install -c https://conda.binstar.org/menpo opencv3`
 - Graphviz (To execute tests)
-    - `sudo apt-get install -y graphviz`
+  - `sudo apt-get install -y graphviz`
 
 ## Download Dataset
 
@@ -48,10 +49,19 @@ python train.py \
 --resume results/encdec1_epoch_20.model
 ```
 
+## Prediction
 
-# Citation
+```
+python predict.py \
+--saved_args results_2016-12-22_130937/args.json \
+--snapshot results_2016-12-22_130937/encdec1_epoch_30.trainer \
+--out_dir results_2016-12-22_130937/pred_30 \
+--gpu 3
+```
 
-Vijay Badrinarayanan, Alex Kendall and Roberto Cipolla "SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation." arXiv preprint arXiv:1511.00561, 2015. [PDF](http://arxiv.org/abs/1511.00561)
+# Reference
+
+Vijay Badrinarayanan, Alex Kendall and Roberto Cipolla "SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation." arXiv preprint arXiv:1511.00561, 2015\. [PDF](http://arxiv.org/abs/1511.00561)
 
 ## Official Implementation with Caffe
 

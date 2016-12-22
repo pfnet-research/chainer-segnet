@@ -127,10 +127,11 @@ if __name__ == '__main__':
     else:
         log_fn = 'log_encdec_finetune'
     trainer.extend(extensions.ProgressBar())
-    trainer.extend(
-        extensions.LogReport(
-            trigger=(args.show_log_iter, 'iteration'),
-            log_name=log_fn))
+    if args.show_log_iter:
+        log_trigger = args.show_log_iter, 'iteration'
+    else:
+        log_trigger = 1, 'epoch'
+    trainer.extend(extensions.LogReport(trigger=log_trigger, log_name=log_fn))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'iteration', 'main/loss', 'validation/main/loss']))
 

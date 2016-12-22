@@ -3,12 +3,15 @@
 
 # Copyright (c) 2016 Shunta Saito
 
+from chainer.serializers import NpzDeserializer
+
 import argparse
 import chainer
 import chainer.functions as F
 import cv2 as cv
 import glob
 import imp
+import json
 import numpy as np
 import os
 import six
@@ -32,42 +35,41 @@ colors = [Sky, Building, Pole, Road, Pavement, Tree, SignSymbol, Fence,
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_file', type=str, default='models/segnet.py')
-    parser.add_argument('--model_name', type=str, default='SegNet')
-    parser.add_argument('--n_classes', type=int, default=12)
-    parser.add_argument('--n_encdec', type=int, default=4)
+    parser.add_argument('--saved_args', type=str, default='results/args.json')
     parser.add_argument('--snapshot', type=str)
-    parser.add_argument('--img_dir', type=str, default='data/test')
-    parser.add_argument('--out_dir', type=str)
-    parser.add_argument('--scale', type=float, default=1.0)
+    parser.add_argument('--test_img_dir', type=str, default='data/test')
+    parser.add_argument('--out_dir', type=str, default='results/prediction')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--mean', type=str, default=None)
     parser.add_argument('--std', type=str, default=None)
+    parser.add_argument('--scale', type=float, default=1.0)
     args = parser.parse_args()
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
 
-    model = imp.load_source(args.model_name, args.model_file)
-    model = getattr(model, args.model_name)(
-        n_encdec=args.n_encdec, n_classes=args.n_classes)
-    param = np.load(args.snapshot)
-    prefix = 'predictor'
+    loaded_args = json.load(open(args.saved_args))
+    model = imp.load_source(
+        loaded_args['model_name'], loaded_args['model_file'])
+    model = getattr(model, loaded_args['model_name'])(
+        n_encdec=loaded_args['n_encdec'], n_classes=loaded_args['n_classes'])
+
+    for d in range(1, loaded_args['n_encdec'] + 1):
+        if d != loaded_args['train_depth']:
+            model.remove_link('encdec{}'.format(d))
+    if loaded_args['train_depth'] > 1:
+        model.remove_link('conv_cls')
 
     # Load parameters
-    for key, arr in six.iteritems(param):
-        print(key)
-        if prefix in key:
-            key = key.replace(prefix, '')
-            names = [k for k in key.split('/') if len(k) > 0]
-            link = model
-            print(names)
-            for name in names[:-1]:
-                link = link.__dict__[name]
-            if isinstance(link.__dict__[names[-1]], chainer.Variable):
-                link.__dict__[names[-1]] = chainer.Variable(arr, volatile='on')
-            else:
-                link.__dict__[names[-1]] = arr
+    params = np.load(args.snapshot)
+    model_params = {}
+    for p in params.keys():
+        if 'updater/model:main/predictor' in p:
+            model_params[
+                p.replace('updater/model:main/predictor/', '')] = params[p]
+    d = NpzDeserializer(model_params)
+    d.load(model)
+
     if args.gpu >= 0:
         model.to_gpu(args.gpu)
     model.train = False
@@ -75,7 +77,7 @@ if __name__ == '__main__':
     mean = None if args.mean is None else np.load(args.mean)
     std = None if args.std is None else np.load(args.std)
 
-    for img_fn in sorted(glob.glob('{}/*.png'.format(args.img_dir))):
+    for img_fn in sorted(glob.glob('{}/*.png'.format(args.test_img_dir))):
         print(img_fn)
 
         # Load & prepare image
@@ -94,7 +96,7 @@ if __name__ == '__main__':
         img_var = chainer.Variable(img, volatile='on')
 
         # Forward
-        ret = model(img_var, depth=args.n_encdec)
+        ret = model(img_var, depth=loaded_args['train_depth'])
         ret = F.softmax(ret).data[0].transpose(1, 2, 0)
         if args.gpu >= 0:
             with chainer.cuda.Device(args.gpu):

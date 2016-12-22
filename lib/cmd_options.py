@@ -56,7 +56,7 @@ def get_args():
         '--valid_batchsize', type=int, default=16,
         help='The mini-batch size during validation loop')
     parser.add_argument(
-        '--show_log_iter', type=int, default=10,
+        '--show_log_iter', type=int, default=None,
         help='Show loss value per this iterations')
 
     # Settings
