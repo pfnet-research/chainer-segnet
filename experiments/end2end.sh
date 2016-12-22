@@ -9,7 +9,7 @@ end_to_end () {
     python train.py \
     --seed 2016 --gpu ${gpu_id} --batchsize 16 \
     --opt Adam --adam_alpha 0.0001 \
-    --rotate --fliplr --use_class_weights \
+    --rotate --fliplr --use_class_weight \
     --snapshot_epoch 10 \
     --epoch $2 \
     --result_dir ${result_dir} \

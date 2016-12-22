@@ -9,7 +9,7 @@ n_encdec=4
 python train.py \
 --seed 2016 --gpu ${gpu_id} --batchsize 16 \
 --opt MomentumSGD --lr 0.01 \
---rotate --fliplr --use_class_weights \
+--rotate --fliplr --use_class_weight \
 --snapshot_epoch 10 \
 --epoch 200 \
 --result_dir ${result_dir} \
@@ -20,7 +20,7 @@ python train.py \
 python train.py \
 --seed 2016 --gpu ${gpu_id} --batchsize 16 \
 --opt MomentumSGD --lr 0.001 \
---rotate --fliplr --use_class_weights \
+--rotate --fliplr --use_class_weight \
 --snapshot_epoch 10 \
 --epoch 400 \
 --result_dir ${result_dir} \
@@ -32,7 +32,7 @@ python train.py \
 python train.py \
 --seed 2016 --gpu ${gpu_id} --batchsize 16 \
 --opt MomentumSGD --lr 0.0001 \
---rotate --fliplr --use_class_weights \
+--rotate --fliplr --use_class_weight \
 --snapshot_epoch 10 \
 --epoch 600 \
 --result_dir ${result_dir} \
@@ -44,7 +44,7 @@ python train.py \
 python train.py \
 --seed 2016 --gpu ${gpu_id} --batchsize 16 \
 --opt MomentumSGD --lr 0.00001 \
---rotate --fliplr --use_class_weights \
+--rotate --fliplr --use_class_weight \
 --snapshot_epoch 10 \
 --epoch 1000 \
 --result_dir ${result_dir} \
