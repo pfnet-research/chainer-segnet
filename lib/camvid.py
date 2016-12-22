@@ -40,11 +40,17 @@ class CamVid(dataset_mixin.DatasetMixin):
         self.rotate_max = rotate_max
         self.ignore_labels = ignore_labels
 
+        self.imgs, self.lbls = [], []
+        for img_fn, lbl_fn in zip(self.img_fns, self.lbl_fns):
+            self.imgs.append(cv.imread(img_fn).astype(np.float))
+            self.lbls.append(
+                cv.imread(lbl_fn, cv.IMREAD_GRAYSCALE).astype(np.int32))
+
     def __len__(self):
         return len(self.img_fns)
 
     def get_example(self, i):
-        img = cv.imread(self.img_fns[i]).astype(np.float)
+        img = self.imgs[i]
         if self.mean is not None:
             img -= self.mean
         if self.std is not None:
@@ -54,7 +60,7 @@ class CamVid(dataset_mixin.DatasetMixin):
         if self.scale != 1.0:
             img = cv.resize(img, None, fx=self.scale, fy=self.scale,
                             interpolation=cv.INTER_NEAREST)
-        lbl = cv.imread(self.lbl_fns[i], cv.IMREAD_GRAYSCALE).astype(np.int32)
+        lbl = self.lbls[i]
         if self.scale != 1.0:
             lbl = cv.resize(lbl, None, fx=self.scale, fy=self.scale,
                             interpolation=cv.INTER_NEAREST)
