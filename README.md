@@ -30,38 +30,29 @@ This shell script performs download CamVid dataset from [SegNet-Tutorial](https:
 bash experiments/train.sh
 ```
 
-### About train.py
+### About train.sh
 
-To use the given coefficients to weight the softmax loss class-wise, add `--use_class_weights` option to the above command.
+To use the preliminarily calculated coefficients to weight the softmax cross entropy in class-wise manner, add `--use_class_weights` option to the above command.
 
-Once the first training for the most outer encoder-decoder pair, start the training for the next inner pair from the saved model state.
+What the shell script `train.sh` do is a simple sequential training process. Once the first training for a most outer encoder-decoder pair, start the training for the next inner pair from the saved model state of the previous training process.
 
-```
-python train.py \
---seed 0 --gpu 1 \
---opt Adam --adam_alpha 0.0001 --batchsize 16 \
---rotate --fliplr --use_class_weights \
---show_log_iter 1 \
---snapshot_epoch 20 \
---epoch 20 \
---result_dir results \
---train_depth 2 \
---resume results/encdec1_epoch_20.model
-```
+If you would like to change the training settings and hyper parameters, please see the output of `python train.py --help` to check the argments it can take.
 
 ## Prediction
 
+Use `predict.py` to create prediction results on the test dataset.
+
 ```
 python predict.py \
---saved_args results_2016-12-22_130937/args.json \
---snapshot results_2016-12-22_130937/encdec1_epoch_30.trainer \
---out_dir results_2016-12-22_130937/pred_30 \
---gpu 3
+--saved_args results_2016-04-03_152217/args.json \
+--snapshot results_2016-04-03_152217/encdec1_epoch_30.trainer \
+--out_dir results_2016-04-03_152217/pred_30 \
+--gpu 0
 ```
 
 # Reference
 
-Vijay Badrinarayanan, Alex Kendall and Roberto Cipolla "SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation." arXiv preprint arXiv:1511.00561, 2015\. [PDF](http://arxiv.org/abs/1511.00561)
+> Vijay Badrinarayanan, Alex Kendall and Roberto Cipolla "SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation." arXiv preprint arXiv:1511.00561, 2015\. [PDF](http://arxiv.org/abs/1511.00561)
 
 ## Official Implementation with Caffe
 
