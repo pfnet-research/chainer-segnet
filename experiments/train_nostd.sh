@@ -1,20 +1,16 @@
 #!/bin/bash
 
 export CHAINER_SEED=2016
-export CHAINER_TYPE_CHECK=0
 
 result_dir=results_`date "+%Y-%m-%d_%H%M%S"`
-gpu_id=0
-batchsize=8
-adam_alpha=0.0001
+gpu_id=0,1,2,3
+batchsize=64
 
 init_train () {
     python train.py \
     --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
-    --mean data/train_mean.npy \
-    --std data/train_std.npy \
     --rotate --fliplr --use_class_weight \
-    --opt Adam --adam_alpha ${adam_alpha} \
+    --opt Adam --adam_alpha 0.0001 \
     --snapshot_epoch 10 \
     --valid_freq 10 \
     --epoch 200 \
@@ -26,9 +22,7 @@ init_train () {
 train () {
     python train.py \
     --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
-    --mean data/train_mean.npy \
-    --std data/train_std.npy \
-    --opt Adam --adam_alpha ${adam_alpha} \
+    --opt Adam --adam_alpha 0.0001 \
     --rotate --fliplr --use_class_weight \
     --snapshot_epoch 10 \
     --valid_freq 10 \
@@ -42,9 +36,7 @@ train () {
 finetune () {
     python train.py \
     --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
-    --mean data/train_mean.npy \
-    --std data/train_std.npy \
-    --opt Adam --adam_alpha ${adam_alpha} \
+    --opt Adam --adam_alpha 0.0001 \
     --rotate --fliplr --use_class_weight \
     --snapshot_epoch 10 \
     --valid_freq 10 \

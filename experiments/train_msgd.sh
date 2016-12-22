@@ -1,17 +1,20 @@
 #!/bin/bash
 
 export CHAINER_SEED=2016
+export CHAINER_TYPE_CHECK=0
 
 result_dir=results_`date "+%Y-%m-%d_%H%M%S"`
 gpu_id=0
+batchsize=8
+lr=0.0005
 
 init_train () {
     python train.py \
-    --seed 2016 --gpus ${gpu_id} --batchsize 16 \
+    --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
     --rotate --fliplr --use_class_weight \
-    --opt Adam --adam_alpha 0.0001 \
+    --opt MomentumSGD --lr ${lr} \
     --snapshot_epoch 10 \
     --valid_freq 10 \
     --epoch 200 \
@@ -22,10 +25,10 @@ init_train () {
 
 train () {
     python train.py \
-    --seed 2016 --gpus ${gpu_id} --batchsize 16 \
+    --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
-    --opt Adam --adam_alpha 0.0001 \
+    --opt MomentumSGD --lr ${lr} \
     --rotate --fliplr --use_class_weight \
     --snapshot_epoch 10 \
     --valid_freq 10 \
@@ -38,10 +41,10 @@ train () {
 
 finetune () {
     python train.py \
-    --seed 2016 --gpus ${gpu_id} --batchsize 16 \
+    --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
-    --opt Adam --adam_alpha 0.0001 \
+    --opt MomentumSGD --lr ${lr} \
     --rotate --fliplr --use_class_weight \
     --snapshot_epoch 10 \
     --valid_freq 10 \

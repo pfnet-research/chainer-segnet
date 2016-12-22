@@ -6,7 +6,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 from chainer.dataset import dataset_mixin
 from os.path import basename as bn
-from scipy.ndimage.interpolation import rotate
 
 import cv2 as cv
 import numpy as np
@@ -40,17 +39,11 @@ class CamVid(dataset_mixin.DatasetMixin):
         self.rotate_max = rotate_max
         self.ignore_labels = ignore_labels
 
-        self.imgs, self.lbls = [], []
-        for img_fn, lbl_fn in zip(self.img_fns, self.lbl_fns):
-            self.imgs.append(cv.imread(img_fn).astype(np.float))
-            self.lbls.append(
-                cv.imread(lbl_fn, cv.IMREAD_GRAYSCALE).astype(np.int32))
-
     def __len__(self):
         return len(self.img_fns)
 
     def get_example(self, i):
-        img = self.imgs[i]
+        img = cv.imread(self.img_fns[i]).astype(np.float)
         if self.mean is not None:
             img -= self.mean
         if self.std is not None:
@@ -60,7 +53,8 @@ class CamVid(dataset_mixin.DatasetMixin):
         if self.scale != 1.0:
             img = cv.resize(img, None, fx=self.scale, fy=self.scale,
                             interpolation=cv.INTER_NEAREST)
-        lbl = self.lbls[i]
+
+        lbl = cv.imread(self.lbl_fns[i], cv.IMREAD_GRAYSCALE).astype(np.int32)
         if self.scale != 1.0:
             lbl = cv.resize(lbl, None, fx=self.scale, fy=self.scale,
                             interpolation=cv.INTER_NEAREST)
@@ -90,11 +84,13 @@ class CamVid(dataset_mixin.DatasetMixin):
             lbl = cv.resize(lbl, img_size, interpolation=cv.INTER_NEAREST)
 
         if self.rotate:
+            h, w = img.shape[:2]
             s = np.clip(np.random.normal(), -self.rotate_max, self.rotate_max)
-            img = rotate(img, s, order=0, mode='reflect')
-            lbl = rotate(lbl, s, order=0, mode='constant', cval=-1)
-            img = cv.resize(img, img_size, interpolation=cv.INTER_NEAREST)
-            lbl = cv.resize(lbl, img_size, interpolation=cv.INTER_NEAREST)
+            mat = cv.getRotationMatrix2D((w // 2, h // 2), s, 1)
+            img = cv.warpAffine(img, mat, (w, h), flags=cv.INTER_NEAREST)
+            lbl = cv.warpAffine(lbl.astype(np.float), mat,
+                                (w, h), flags=cv.INTER_NEAREST)
+            lbl = lbl.astype(np.int32)
 
         if self.fliplr and np.random.randint(0, 2) == 1:
             img = cv.flip(img, 1)

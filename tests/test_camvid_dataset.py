@@ -7,11 +7,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-from lib import CamVid
 
 import cv2 as cv
 import numpy as np
 import os
+import sys
+
+if True:
+    sys.path.insert(0, '.')
+    from lib import CamVid
 
 Sky = [128, 128, 128]
 Building = [128, 0, 0]
@@ -35,8 +39,8 @@ if __name__ == '__main__':
     img_dir = 'data/train'
     lbl_dir = 'data/trainannot'
     list_fn = 'data/train.txt'
-    mean = None
-    std = None
+    mean = 'data/train_mean.npy'
+    std = 'data/train_std.npy'
     shift_jitter = 50
     scale_jitter = 0.2
     fliplr = True
@@ -54,6 +58,9 @@ if __name__ == '__main__':
         lbl_ids = np.unique(lbl)
         img = img.transpose(1, 2, 0)
         print(img.shape, lbl.shape, lbl_ids)
+        img -= img.reshape(-1, 3).min(axis=0)
+        img /= img.reshape(-1, 3).max(axis=0)
+        img *= 255
         cv.imwrite('{}/{}_img.png'.format(out_dir, i), img)
         out_lbl = np.zeros_like(img)
         for k in range(12):

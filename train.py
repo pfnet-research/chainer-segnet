@@ -93,7 +93,8 @@ if __name__ == '__main__':
     logging.info('train: {}, valid: {}'.format(len(train), len(valid)))
 
     # Create iterators
-    train_iter = iterators.MultiprocessIterator(train, args.batchsize)
+    train_iter = iterators.MultiprocessIterator(
+        train, args.batchsize, n_prefetch=10)
     valid_iter = iterators.SerialIterator(valid, args.valid_batchsize,
                                           repeat=False, shuffle=False)
 
