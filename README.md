@@ -24,6 +24,12 @@ bash experiments/download.sh
 
 This shell script performs download CamVid dataset from [SegNet-Tutorial](https://github.com/alexgkendall/SegNet-Tutorial) repository owned by the original auther of the SegNet paper.
 
+## Calculate dataset mean
+
+```
+python lib/calc_mean.py
+```
+
 ## Training
 
 ```

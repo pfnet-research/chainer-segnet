@@ -49,6 +49,8 @@ class CamVid(dataset_mixin.DatasetMixin):
             img -= self.mean
         if self.std is not None:
             img /= self.std
+        if self.mean is None and self.std is None:
+            img /= 255.0
         if self.scale != 1.0:
             img = cv.resize(img, None, fx=self.scale, fy=self.scale,
                             interpolation=cv.INTER_NEAREST)
