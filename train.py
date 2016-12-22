@@ -56,7 +56,8 @@ if __name__ == '__main__':
         if not os.path.exists(args.result_dir):
             os.makedirs(args.result_dir)
         result_dir = args.result_dir
-    json.dump(vars(args), open('{}/args.json'.format(result_dir), 'w'))
+    json.dump(vars(args), open('{}/args_{}.json'.format(
+        result_dir, args.train_depth), 'w'))
     create_logger(args, result_dir)
 
     # Instantiate model

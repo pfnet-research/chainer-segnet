@@ -8,7 +8,7 @@ gpu_id=0
 end_to_end () {
     python train.py \
     --seed 2016 --gpu ${gpu_id} --batchsize 16 \
-    --opt Adam --lr 0.0001 \
+    --opt Adam --adam_alpha 0.0001 \
     --rotate --fliplr --use_class_weights \
     --snapshot_epoch 10 \
     --epoch $2 \

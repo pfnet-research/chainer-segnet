@@ -48,7 +48,7 @@ finetune () {
 }
 
 init_train
-train 2 ${result_dir}/encdec1_epoch_100.trainer 400
-train 3 ${result_dir}/encdec2_epoch_200.trainer 600
-train 4 ${result_dir}/encdec3_epoch_300.trainer 800
-finetune 4 ${result_dir}/encdec4_epoch_400.trainer 1000
+train 2 ${result_dir}/encdec1_epoch_200.trainer 400
+train 3 ${result_dir}/encdec2_epoch_400.trainer 600
+train 4 ${result_dir}/encdec3_epoch_600.trainer 800
+finetune 4 ${result_dir}/encdec4_epoch_800.trainer 1000
