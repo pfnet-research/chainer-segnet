@@ -29,3 +29,21 @@ np.save('data/train_mean', mean)
 np.save('data/train_std', std)
 cv.imwrite('data/train_mean.png', mean)
 cv.imwrite('data/train_std.png', std)
+
+class_ids = set()
+fns = glob.glob('data/trainannot/*.png')
+n = len(fns)
+classes = [0.0 for _ in range(12)]
+for lbl_fn in fns:
+    lbl = cv.imread(lbl_fn, cv.IMREAD_GRAYSCALE)
+    for lb_i in np.unique(lbl):
+        class_ids.add(lb_i)
+    for l in range(12):
+        classes[l] += np.sum(lbl == l)
+class_freq = np.array(classes)
+class_freq /= np.sum(class_freq)
+print('Existing class IDs: {}'.format(class_ids))
+
+with open('data/train_freq.csv', 'w') as fp:
+    for i, freq in enumerate(class_freq):
+        print(1.0 / freq, end=',' if i < len(class_freq) - 1 else '', file=fp)

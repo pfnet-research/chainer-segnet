@@ -10,7 +10,7 @@ init_train () {
     --seed 2016 --gpu ${gpu_id} --batchsize 16 \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
-    --rotate --fliplr --use_class_weight \
+    --rotate --fliplr \
     --opt Adam --adam_alpha 0.0001 \
     --snapshot_epoch 10 \
     --valid_freq 10 \
@@ -26,7 +26,7 @@ train () {
     --mean data/train_mean.npy \
     --std data/train_std.npy \
     --opt Adam --adam_alpha 0.0001 \
-    --rotate --fliplr --use_class_weight \
+    --rotate --fliplr \
     --snapshot_epoch 10 \
     --valid_freq 10 \
     --epoch $3 \
@@ -42,7 +42,7 @@ finetune () {
     --mean data/train_mean.npy \
     --std data/train_std.npy \
     --opt Adam --adam_alpha 0.0001 \
-    --rotate --fliplr --use_class_weight \
+    --rotate --fliplr \
     --snapshot_epoch 10 \
     --valid_freq 10 \
     --epoch $3 \

@@ -30,15 +30,19 @@ This shell script performs download CamVid dataset from [SegNet-Tutorial](https:
 python lib/calc_mean.py
 ```
 
+It produces `train_mean.npy` and `train_std.npy` to normalize inputs during training and also `train_freq.csv` to weight the softmax cross entropy loss.
+
 ## Training
 
 ```
-bash experiments/train.sh
+CUDA_VISIBLE_DEVICES=0 bash experiments/train.sh
 ```
+
+You can specify which GPU you want to use by using `CUDA_VISIBLE_DEVICES` environment variable. Or if you directory use `train.py` instead of prepared training shell scripts in `experimetns` dir, you can easily specify the GPU ID by using `--gpu` argment.
 
 ### About train.sh
 
-To use the preliminarily calculated coefficients to weight the softmax cross entropy in class-wise manner, add `--use_class_weights` option to the above command.
+To use the preliminarily calculated coefficients to weight the softmax cross entropy in class-wise manner, add `--use_class_weight` option to the above command.
 
 What the shell script `train.sh` do is a simple sequential training process. Once the first training for a most outer encoder-decoder pair, start the training for the next inner pair from the saved model state of the previous training process.
 

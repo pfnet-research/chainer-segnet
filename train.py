@@ -63,7 +63,7 @@ if __name__ == '__main__':
     # Instantiate model
     model = get_model(
         args.model_file, args.model_name, args.loss_file, args.loss_name,
-        args.class_weights if args.use_class_weights else None, args.n_encdec,
+        args.class_weight if args.use_class_weight else None, args.n_encdec,
         args.n_classes, args.in_channel, args.n_mid, args.train_depth,
         result_dir)
 
