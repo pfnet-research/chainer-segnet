@@ -12,15 +12,16 @@ This is an unofficial implementation of SegNet. This implementation doesn't use 
 - six 1.10.0
 - OpenCV 3.1.0
     - `conda install -c https://conda.binstar.org/menpo opencv3`
+- Graphviz (To execute tests)
+    - `sudo apt-get install -y graphviz`
 
 ## Download Dataset
 
 ```
-wget https://github.com/alexgkendall/SegNet-Tutorial/archive/master.zip
-unzip master.zip && rm -rf master.zip
-mv SegNet-Tutorial-master/CamVid data
-rm -rf mv SegNet-Tutorial-master
+bash experiments/download.sh
 ```
+
+This shell script performs download CamVid dataset from [SegNet-Tutorial](https://github.com/alexgkendall/SegNet-Tutorial) repository owned by the original auther of the SegNet paper.
 
 ## Training
 

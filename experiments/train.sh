@@ -5,7 +5,7 @@ export CHAINER_SEED=2016
 init_train () {
     python train.py \
     --seed 2016 --gpu 0 --batchsize 16 \
-    --opt Adam --adam_alpha 0.001 \
+    --opt Adam --adam_alpha 0.0003 \
     --rotate --fliplr --use_class_weights \
     --show_log_iter 1 \
     --snapshot_epoch 10 \
@@ -19,7 +19,7 @@ init_train () {
 train () {
     python train.py \
     --seed 2016 --gpu 0 --batchsize 16 \
-    --opt Adam --adam_alpha 0.0001 \
+    --opt Adam --adam_alpha 0.0003 \
     --rotate --fliplr --use_class_weights \
     --show_log_iter 1 \
     --snapshot_epoch 10 \
@@ -32,7 +32,7 @@ train () {
 finetune () {
     python train.py \
     --seed 2016 --gpu 0 --batchsize 16 \
-    --opt Adam --adam_alpha 0.00005 \
+    --opt Adam --adam_alpha 0.0003 \
     --rotate --fliplr --use_class_weights \
     --show_log_iter 1 \
     --snapshot_epoch 10 \
@@ -45,7 +45,9 @@ finetune () {
 
 
 init_train
-# train 2 results/encdec1_epoch_100.model
-# train 3 results/encdec2_epoch_100.model
-# train 4 results/encdec3_epoch_100.model
-# finetune 4 results/encdec4_epoch_100.model
+train 2 results/encdec1_epoch_100.trainer
+train 3 results/encdec2_epoch_100.trainer
+train 4 results/encdec3_epoch_100.trainer
+finetune 4 results/encdec4_epoch_100.model
+
+# mv results results_`date "+%Y-%m-%d_%H%M%S"`

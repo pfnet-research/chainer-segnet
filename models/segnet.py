@@ -77,6 +77,9 @@ class SegNet(chainer.Chain):
         self.n_classes = n_classes
         self.train = True
 
+    def is_registered_link(self, name):
+        return name in self._children
+
     def remove_link(self, name):
         """Remove a link that has the given name from this model
 

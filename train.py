@@ -23,6 +23,30 @@ import json
 import logging
 import os
 
+
+@training.make_extension(default_name='recover_links')
+def recover_links(trainer):
+    model = trainer.updater.get_optimizer('main').target
+    n_encdec = model.predictor.n_encdec
+    train_depth = model.train_depth
+    for d in range(1, n_encdec + 1):
+        if d != train_depth:
+            model.predictor.recover_link('encdec{}'.format(d))
+    model.predictor.recover_link('conv_cls')
+
+
+@training.make_extension(default_name='remove_links')
+def remove_links(trainer):
+    model = trainer.updater.get_optimizer('main').target
+    n_encdec = model.predictor.n_encdec
+    train_depth = model.train_depth
+    for d in range(1, n_encdec + 1):
+        if d != train_depth:
+            if model.predictor.is_registered_link('encdec{}'.format(d)):
+                model.predictor.remove_link('encdec{}'.format(d))
+    if train_depth > 1 and model.predictor.is_registered_link('conv_cls'):
+        model.predictor.remove_link('conv_cls')
+
 if __name__ == '__main__':
     args = get_args()
     if args.result_dir is None:
@@ -89,24 +113,32 @@ if __name__ == '__main__':
 
     # Add snapshot_object
     if not args.finetune:
-        model_save_fn = 'encdec{}'.format(args.train_depth) + \
-            '_epoch_{.updater.epoch}.model'
+        save_fn = 'encdec{}'.format(args.train_depth) + \
+            '_epoch_{.updater.epoch}.trainer'
     else:
-        model_save_fn = 'encdec4_finetune_epoch_' + '{.updater.epoch}.model'
-    trainer.extend(
-        extensions.snapshot(), trigger=(args.snapshot_epoch, 'epoch'))
+        save_fn = 'encdec4_finetune_epoch_' + '{.updater.epoch}.trainer'
+    trainer.extend(extensions.snapshot(
+        filename=save_fn, trigger=(args.snapshot_epoch, 'epoch')),
+        priority=0, invoke_before_training=False)
 
     # Add Logger
     if not args.finetune:
         log_fn = 'log_encdec{}'.format(args.train_depth)
     else:
         log_fn = 'log_encdec_finetune'
+    trainer.extend(extensions.ProgressBar())
     trainer.extend(
         extensions.LogReport(
             trigger=(args.show_log_iter, 'iteration'),
             log_name=log_fn))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'iteration', 'main/loss', 'validation/main/loss']))
-    trainer.extend(extensions.ProgressBar())
+
+    # Add remover and recoverer
+    if not args.finetune:
+        trainer.extend(remove_links, trigger=(args.snapshot_epoch, 'epoch'),
+                       priority=500, invoke_before_training=True)
+        trainer.extend(recover_links, trigger=(args.snapshot_epoch, 'epoch'),
+                       priority=400, invoke_before_training=False)
 
     trainer.run()
