@@ -32,8 +32,7 @@ def recover_links(trainer):
     for d in range(1, n_encdec + 1):
         if d != train_depth:
             model.predictor.recover_link('encdec{}'.format(d))
-    if train_depth == 1:
-        model.predictor.recover_link('conv_cls')
+    model.predictor.recover_link('conv_cls')
 
 
 @training.make_extension(default_name='remove_links')
@@ -126,9 +125,12 @@ if __name__ == '__main__':
 
     # Add Logger
     if not args.finetune:
-        log_fn = 'log_encdec{}'.format(args.train_depth)
+        log_fn = 'log_encdec{}.0'.format(args.train_depth)
     else:
-        log_fn = 'log_encdec_finetune'
+        log_fn = 'log_encdec_finetune.0'
+    if os.path.exists(log_fn):
+        n = int(log_fn.split('.')[-1])
+        log_fn = log_fn.repalce(str(n), str(n + 1))
     trainer.extend(extensions.ProgressBar())
     if args.show_log_iter:
         log_trigger = args.show_log_iter, 'iteration'

@@ -7,7 +7,7 @@ opt=Adam
 lr=0.001
 adam_alpha=0.0001
 n_encdec=4
-result_dir=results_opt-${opt}_lr-${lr}_alpha-${adam_alpha}_`date "+%Y-%m-%d_%H%M%S"`
+result_dir=results_NoSTD_NoCW_opt-${opt}_lr-${lr}_alpha-${adam_alpha}_`date "+%Y-%m-%d_%H%M%S"`
 
 if [ -z ${snapshot_epoch} ]; then
     snapshot_epoch=10
@@ -28,9 +28,6 @@ init_train () {
     --valid_freq ${snapshot_epoch} \
     --result_dir ${result_dir} \
     --n_encdec ${n_encdec} \
-    --mean data/train_mean.npy \
-    --std data/train_std.npy \
-    --use_class_weight \
     --rotate \
     --fliplr \
     --epoch $1 \
@@ -49,9 +46,6 @@ train () {
     --valid_freq ${snapshot_epoch} \
     --result_dir ${result_dir} \
     --n_encdec ${n_encdec} \
-    --mean data/train_mean.npy \
-    --std data/train_std.npy \
-    --use_class_weight \
     --rotate \
     --fliplr \
     --train_depth $1 \
@@ -71,9 +65,6 @@ finetune () {
     --valid_freq ${snapshot_epoch} \
     --result_dir ${result_dir} \
     --n_encdec ${n_encdec} \
-    --mean data/train_mean.npy \
-    --std data/train_std.npy \
-    --use_class_weight \
     --rotate \
     --fliplr \
     --train_depth $1 \

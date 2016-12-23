@@ -1,63 +1,89 @@
 #!/bin/bash
 
-export CHAINER_SEED=2016
-export CHAINER_TYPE_CHECK=0
-
-result_dir=results_`date "+%Y-%m-%d_%H%M%S"`
+seed=2016
 gpu_id=0
 batchsize=16
-lr=0.001
+opt=MomentumSGD
+lr=0.0001
+adam_alpha=0.0001
+n_encdec=4
+result_dir=results_opt-${opt}_lr-${lr}_alpha-${adam_alpha}_`date "+%Y-%m-%d_%H%M%S"`
+
+if [ -z ${snapshot_epoch} ]; then
+    snapshot_epoch=10
+fi
+if [ -z ${epoch} ]; then
+    epoch=200
+fi
 
 init_train () {
-    python train.py \
-    --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
+    CHAINER_SEED=${seed} CHAINER_TYPE_CHECK=0 python train.py \
+    --seed 2016 \
+    --gpus ${gpu_id} \
+    --batchsize ${batchsize} \
+    --opt ${opt} \
+    --lr ${lr} \
+    --adam_alpha ${adam_alpha} \
+    --snapshot_epoch ${snapshot_epoch} \
+    --valid_freq ${snapshot_epoch} \
+    --result_dir ${result_dir} \
+    --n_encdec ${n_encdec} \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
-    --rotate --fliplr --use_class_weight \
-    --opt MomentumSGD --lr ${lr} \
-    --snapshot_epoch 10 \
-    --valid_freq 10 \
-    --epoch 200 \
-    --result_dir ${result_dir} \
-    --n_encdec 4 \
+    --use_class_weight \
+    --rotate \
+    --fliplr \
+    --epoch $1 \
     --train_depth 1
 }
 
 train () {
-    python train.py \
-    --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
+    CHAINER_SEED=${seed} CHAINER_TYPE_CHECK=0 python train.py \
+    --seed 2016 \
+    --gpus ${gpu_id} \
+    --batchsize ${batchsize} \
+    --opt ${opt} \
+    --lr ${lr} \
+    --adam_alpha ${adam_alpha} \
+    --snapshot_epoch ${snapshot_epoch} \
+    --valid_freq ${snapshot_epoch} \
+    --result_dir ${result_dir} \
+    --n_encdec ${n_encdec} \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
-    --opt MomentumSGD --lr ${lr} \
-    --rotate --fliplr --use_class_weight \
-    --snapshot_epoch 10 \
-    --valid_freq 10 \
-    --epoch $3 \
-    --result_dir ${result_dir} \
-    --n_encdec 4 \
+    --use_class_weight \
+    --rotate \
+    --fliplr \
     --train_depth $1 \
-    --resume $2
+    --resume $2 \
+    --epoch $3
 }
 
 finetune () {
-    python train.py \
-    --seed 2016 --gpus ${gpu_id} --batchsize ${batchsize} \
+    CHAINER_SEED=${seed} CHAINER_TYPE_CHECK=0 python train.py \
+    --seed 2016 \
+    --gpus ${gpu_id} \
+    --batchsize ${batchsize} \
+    --opt ${opt} \
+    --lr ${lr} \
+    --adam_alpha ${adam_alpha} \
+    --snapshot_epoch ${snapshot_epoch} \
+    --valid_freq ${snapshot_epoch} \
+    --result_dir ${result_dir} \
+    --n_encdec ${n_encdec} \
     --mean data/train_mean.npy \
     --std data/train_std.npy \
-    --opt MomentumSGD --lr ${lr} \
-    --rotate --fliplr --use_class_weight \
-    --snapshot_epoch 10 \
-    --valid_freq 10 \
-    --epoch $3 \
-    --result_dir ${result_dir} \
-    --n_encdec 4 \
+    --use_class_weight \
+    --rotate \
+    --fliplr \
     --train_depth $1 \
-    --finetune \
-    --resume $2
+    --resume $2 \
+    --epoch $3 \
+    --finetune
 }
 
-init_train
-train 2 ${result_dir}/encdec1_epoch_200.trainer 400
-train 3 ${result_dir}/encdec2_epoch_400.trainer 600
-train 4 ${result_dir}/encdec3_epoch_600.trainer 800
-finetune 4 ${result_dir}/encdec4_epoch_800.trainer 1000
+init_train ${epoch}
+train 2 ${result_dir}/encdec1_epoch_${epoch}.trainer `expr ${epoch} \* 2`
+train 3 ${result_dir}/encdec2_epoch_`expr ${epoch} \* 2`.trainer `expr ${epoch} \* 3`
+train 4 ${result_dir}/encdec3_epoch_`expr ${epoch} \* 3`.trainer `expr ${epoch} \* 4`
+finetune 4 ${result_dir}/encdec4_epoch_`expr ${epoch} \* 4`.trainer `expr ${epoch} \* 5`
