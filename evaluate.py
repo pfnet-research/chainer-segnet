@@ -61,7 +61,8 @@ for i in range(args.n_classes):
     if i != args.unknown_class and conf[i, :].sum() > 0:
         n_true = cf[i, :].sum()
         n_positive = cf[:, i].sum()
-        iou[i] = cf[i, i] / np.logical_or(cf[i, :], cf[:, i]).sum()
+        n_true_positive = cf[i, i]
+        iou[i] = n_true_positive / float(n_true + n_positive - n_true_positive)
 
 print('Global acc = {}'.format(globalacc))
 
@@ -97,4 +98,4 @@ for class_name in [
     print(' {:.1f} |'.format(per_class_results[class_name] * 100), end='')
 print(' {:.1f} | {:.1f} | {:.1f} |'.format(
     class_average_acc * 100, globalacc * 100,
-    iou.sum() / float(args.n_classes)))
+    iou.sum() / float(args.n_classes) * 100))
