@@ -3,8 +3,6 @@
 
 # Copyright (c) 2016 Shunta Saito
 
-from chainer.serializers import NpzDeserializer
-
 import argparse
 import chainer
 import chainer.functions as F
@@ -76,19 +74,20 @@ if __name__ == '__main__':
         print('Model is transferred to GPU: {}'.format(args.gpu))
     model.train = False
 
-    print(dir(model))
-
     mean = None if args.mean is None else np.load(args.mean)
     std = None if args.std is None else np.load(args.std)
+
+    print('mean = {}, std = {}'.format(mean, std))
 
     for img_fn in sorted(glob.glob('{}/*.png'.format(args.test_img_dir))):
         # Load & prepare image
         img = cv.imread(img_fn).astype(np.float)
-        print(img_fn, img.shape)
         if mean is not None:
             img -= mean
         if std is not None:
             img /= std
+        if mean is None and std is None:
+            img /= 255.0
         if args.scale != 1.0:
             img = cv.resize(img, None, fx=args.scale, fy=args.scale)
         img = np.expand_dims(img, 0).transpose(0, 3, 1, 2)
@@ -115,4 +114,8 @@ if __name__ == '__main__':
         base_fn = os.path.basename(img_fn)
         out_fn = '{}/{}'.format(args.out_dir, base_fn)
         cv.imwrite(out_fn, out)
-        print(out_fn)
+        out_fn = '{}/{}'.format(
+            args.out_dir,
+            os.path.splitext(os.path.basename(out_fn))[0])
+        np.save(out_fn, mask)
+        print(img_fn, img.shape, out_fn)

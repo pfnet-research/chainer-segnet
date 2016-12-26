@@ -24,6 +24,7 @@ for img_fn in fns:
     else:
         std += (img.astype(np.float64) - mean) ** 2
 std /= n
+std = np.sqrt(std)
 
 np.save('data/train_mean', mean)
 np.save('data/train_std', std)
