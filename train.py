@@ -128,9 +128,9 @@ if __name__ == '__main__':
         log_fn = 'log_encdec{}.0'.format(args.train_depth)
     else:
         log_fn = 'log_encdec_finetune.0'
-    if os.path.exists(log_fn):
+    if os.path.exists('{}/{}'.format(result_dir, log_fn)):
         n = int(log_fn.split('.')[-1])
-        log_fn = log_fn.repalce(str(n), str(n + 1))
+        log_fn = log_fn.replace(str(n), str(n + 1))
     trainer.extend(extensions.ProgressBar())
     if args.show_log_iter:
         log_trigger = args.show_log_iter, 'iteration'

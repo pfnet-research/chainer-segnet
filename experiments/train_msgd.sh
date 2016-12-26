@@ -13,7 +13,7 @@ if [ -z ${snapshot_epoch} ]; then
     snapshot_epoch=10
 fi
 if [ -z ${epoch} ]; then
-    epoch=200
+    epoch=300
 fi
 
 init_train () {

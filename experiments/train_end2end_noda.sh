@@ -13,7 +13,7 @@ if [ -z ${snapshot_epoch} ]; then
     snapshot_epoch=10
 fi
 if [ -z ${epoch} ]; then
-    epoch=200
+    epoch=1000
 fi
 
 CHAINER_SEED=${seed} CHAINER_TYPE_CHECK=0 python train.py \

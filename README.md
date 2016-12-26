@@ -50,15 +50,27 @@ If you would like to change the training settings and hyper parameters, please s
 
 ## Prediction
 
-Use `predict.py` to create prediction results on the test dataset.
+Use `predict.py` to create prediction results on the test dataset. The below script executes the prediction script for all result dirs.
 
 ```
-python predict.py \
---saved_args results_2016-04-03_152217/args.json \
---snapshot results_2016-04-03_152217/encdec1_epoch_30.trainer \
---out_dir results_2016-04-03_152217/pred_30 \
---gpu 0
+python experiments/batch_predict.py
 ```
+
+## Evaluation
+
+```
+python experiments/batch_evaluate.py
+```
+
+# Results
+
+The below table shows the evaluation results. Note that **STD** and **CW** stand for standardization (mean subtraction and stddev division) and class weight (per-class weighting for the softmax cross entropy during training), respectively.
+
+| Model | Opt | Building | Tree | Sky | Car | SignSymbol | Road | Pedestrian | Fence | Pole | Pavement | Bicyclist | Class avg. | Global avg. |
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+SegNet - 4 layer (from paper) | L-BFGS | 75.0 | 84.6 | 91.2 | 82.7 | 36.9 | 93.3 | 55.0 | 37.5 | 44.8 | 74.1 | 16.0 | 62.9 | 84.3 |
+chainer-segnet (No STD, No CW) | Adam (alpha=0.0001) | 86.3 | 82.7 | 96.0 | 82.4 | 40.7 | 93.2 | 43.3 | 40.8 | 23.9 | 76.9 | 24.1 | 57.5 | 86.2 |
+chainer-segnet (No STD) | Adam (alpha=0.0001) | 69.0 | 79.4 | 90.5 | 90.5 | 51.2 | 92.5 | 75.8 | 51.7 | 61.8 | 82.8 | 59.1 | 67.0 | 82.1 |
 
 # Reference
 

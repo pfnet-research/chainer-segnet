@@ -20,6 +20,7 @@ if __name__ == '__main__':
 
     print('anno_imag_fns  n = {}'.format(len(anno_image_fns)))
     print('result_npy_fns n = {}'.format(len(result_npy_fns)))
+    assert len(result_npy_fns) == len(anno_image_fns)
 
     totalpoints = 0
     cf = np.zeros((len(anno_image_fns), args.n_classes, args.n_classes))
@@ -58,9 +59,42 @@ globalacc /= float(totalpoints)
 iou = np.zeros((args.n_classes,))
 for i in range(args.n_classes):
     if i != args.unknown_class and conf[i, :].sum() > 0:
-        iou[i] = cf[i, i] / cf[i, :].sum() + cf[:, i].sum() - cf[i, i]
+        n_true = cf[i, :].sum()
+        n_positive = cf[:, i].sum()
+        iou[i] = cf[i, i] / np.logical_or(cf[i, :], cf[:, i]).sum()
 
 print('Global acc = {}'.format(globalacc))
-print('Class average acc = {}'.format(
-    np.diag(conf).sum() / float(args.n_classes)))
-print('Mean IoU = {}'.format(iou.sum() / float(args.n_classes)))
+
+class_average_acc = np.diag(conf).sum() / float(args.n_classes)
+print('Class average acc = {}'.format(class_average_acc))
+
+classes = [
+    'Sky', 'Building', 'Pole', 'Road', 'Pavement', 'Tree', 'SignSymbol',
+    'Fence', 'Car', 'Pedestrian', 'Bicyclist', 'Unlabelled'
+]
+per_class_results = {}
+for class_id, conf in enumerate(np.diag(conf)):
+    per_class_results[classes[class_id]] = conf
+
+# Table titles
+print('|', end='')
+for class_name in [
+    'Building', 'Tree', 'Sky', 'Car', 'SignSymbol', 'Road', 'Pedestrian',
+        'Fence', 'Pole', 'Pavement', 'Bicyclist']:
+    print(' {} |'.format(class_name), end='')
+print(' Class avg. | Global avg. |')
+
+# Table borders
+for _ in range(len(classes) + 3):
+    print(':-:|', end='')
+print('')
+
+# Values
+print('|', end='')
+for class_name in [
+    'Building', 'Tree', 'Sky', 'Car', 'SignSymbol', 'Road', 'Pedestrian',
+        'Fence', 'Pole', 'Pavement', 'Bicyclist']:
+    print(' {:.1f} |'.format(per_class_results[class_name] * 100), end='')
+print(' {:.1f} | {:.1f} | {:.1f} |'.format(
+    class_average_acc * 100, globalacc * 100,
+    iou.sum() / float(args.n_classes)))
