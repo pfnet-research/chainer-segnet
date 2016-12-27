@@ -83,7 +83,7 @@ for class_name in [
     'Building', 'Tree', 'Sky', 'Car', 'SignSymbol', 'Road', 'Pedestrian',
         'Fence', 'Pole', 'Pavement', 'Bicyclist']:
     print(' {} |'.format(class_name), end='')
-print(' Class avg. | Global avg. |')
+print(' Class avg. | Global avg. | IoU |')
 
 # Table borders
 for _ in range(len(classes) + 3):
