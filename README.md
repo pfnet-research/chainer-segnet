@@ -64,7 +64,7 @@ python experiments/batch_evaluate.py
 
 # Results
 
-The below table shows the evaluation results. Note that **STD** and **CW** stand for standardization (mean subtraction and stddev division) and class weight (per-class weighting for the softmax cross entropy during training), respectively. **DA** stands for data augmentation (random rotation, fliping LR, shift jittering, and scale jittering). `lr=0.01dc` means the learning rate was dropped starting from 0.01. See the actual learning rate schedule in `experiments/train_end2end_msgd.sh`.
+The below table shows the evaluation results. Note that **STD** and **CW** stand for standardization (mean subtraction and stddev division) and class weight (per-class weighting for the softmax cross entropy during training), respectively. **DA** stands for data augmentation (random rotation, flipping LR, shift jittering, and scale jittering). `lr=0.01dc` means the learning rate was dropped starting from 0.01. See the actual learning rate schedule in `experiments/train_end2end_msgd.sh`.
 
 | Model                           | Opt                         | Building | Tree     | Sky      | Car      | SignSymbol | Road     | Pedestrian | Fence    | Pole     | Pavement | Bicyclist | Class avg. | Global avg. | IoU      |
 |:-------------------------------:|:---------------------------:|:--------:|:--------:|:--------:|:--------:|:----------:|:--------:|:----------:|:--------:|:--------:|:--------:|:---------:|:----------:|:-----------:|:--------:|

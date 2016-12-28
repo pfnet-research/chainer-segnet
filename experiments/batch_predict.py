@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
 import glob
 import json
 import os
 import re
 import subprocess
 
-for result_dir in glob.glob('results*'):
-    if not os.path.isdir(result_dir):
-        continue
+
+def pred(result_dir):
     args_fn = glob.glob('{}/arg*.json'.format(result_dir))[0]
     args = json.load(open(args_fn))
 
@@ -28,3 +28,17 @@ for result_dir in glob.glob('results*'):
         cmd += ['--mean', args['mean']]
         cmd += ['--std', args['std']]
     subprocess.call(cmd)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--result_dir', type=str, default=None)
+    args = parser.parse_args()
+
+    if args.result_dir is None:
+        for result_dir in glob.glob('results*'):
+            if not os.path.isdir(result_dir):
+                continue
+            pred(result_dir)
+    else:
+        pred(args.result_dir)

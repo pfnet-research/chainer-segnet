@@ -42,6 +42,7 @@ if __name__ == '__main__':
     parser.add_argument('--mean', type=str, default=None)
     parser.add_argument('--std', type=str, default=None)
     parser.add_argument('--scale', type=float, default=1.0)
+    parser.add_argument('--save_output', action='store_true', default=False)
     args = parser.parse_args()
 
     if not os.path.exists(args.out_dir):
@@ -103,6 +104,10 @@ if __name__ == '__main__':
         if args.gpu >= 0:
             with chainer.cuda.Device(args.gpu):
                 ret = chainer.cuda.to_cpu(ret)
+        if args.save_output:
+            np.save('{}/{}_full'.format(
+                args.out_dir,
+                os.path.splitext(os.path.basename(img_fn))[0]), ret)
 
         # Create output
         out = np.zeros((ret.shape[0], ret.shape[1], 3), dtype=np.uint8)
