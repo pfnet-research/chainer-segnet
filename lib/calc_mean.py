@@ -48,3 +48,5 @@ print('Existing class IDs: {}'.format(class_ids))
 with open('data/train_freq.csv', 'w') as fp:
     for i, freq in enumerate(class_freq):
         print(1.0 / freq, end=',' if i < len(class_freq) - 1 else '', file=fp)
+print('0.2595,0.1826,4.5640,0.1417,0.9051,0.3826,9.6446,1.8418,'
+      '0.6823,6.2478,7.3614,0.0', file=open('data/train_origcw.csv', 'w'))
