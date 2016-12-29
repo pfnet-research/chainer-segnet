@@ -6,7 +6,7 @@ opt=Adam
 lr=0.001
 adam_alpha=0.0001
 n_encdec=4
-result_dir=results_opt-${opt}_lr-${lr}_alpha-${adam_alpha}_`date "+%Y-%m-%d_%H%M%S"`
+result_dir=results_origCW_n-mid-128_opt-${opt}_lr-${lr}_alpha-${adam_alpha}_`date "+%Y-%m-%d_%H%M%S"`
 
 if [ -z ${snapshot_epoch} ]; then
     snapshot_epoch=10
@@ -19,7 +19,7 @@ init_train () {
     CHAINER_SEED=${seed} CHAINER_TYPE_CHECK=0 python train.py \
     --seed 2016 \
     --gpus ${gpu_id} \
-    --batchsize 8 \
+    --batchsize 6 \
     --opt ${opt} \
     --lr ${lr} \
     --adam_alpha ${adam_alpha} \
@@ -33,6 +33,7 @@ init_train () {
     --rotate \
     --fliplr \
     --class_weight data/train_origcw.csv \
+    --n_mid 128 \
     --epoch $1 \
     --train_depth 1
 }
@@ -55,6 +56,7 @@ train () {
     --rotate \
     --fliplr \
     --class_weight data/train_origcw.csv \
+    --n_mid 128 \
     --train_depth $1 \
     --resume $2 \
     --epoch $3
@@ -78,6 +80,7 @@ finetune () {
     --rotate \
     --fliplr \
     --class_weight data/train_origcw.csv \
+    --n_mid 128 \
     --train_depth $1 \
     --resume $2 \
     --epoch $3 \
