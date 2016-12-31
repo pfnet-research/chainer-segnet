@@ -7,7 +7,7 @@ opt=Adam
 lr=0.001
 adam_alpha=0.0001
 n_encdec=4
-result_dir=results_end2end_noda_opt-${opt}_lr-${lr}_alpha-${adam_alpha}_`date "+%Y-%m-%d_%H%M%S"`
+result_dir=results_end2end_NoDA_opt-${opt}_lr-${lr}_alpha-${adam_alpha}_`date "+%Y-%m-%d_%H%M%S"`
 
 if [ -z ${snapshot_epoch} ]; then
     snapshot_epoch=10

@@ -12,3 +12,4 @@ for result_dir in glob.glob('results*/pred*'):
     cmd = ['python', 'evaluate.py',
            '--result_dir', result_dir]
     subprocess.call(cmd)
+    print('-' * 20)

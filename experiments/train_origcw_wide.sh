@@ -88,7 +88,7 @@ finetune () {
 }
 
 init_train ${epoch}
-train 2 ${result_dir}/encdec1_epoch_${epoch}.trainer `expr ${epoch} \* 2` 6
+train 2 ${result_dir}/encdec1_epoch_${epoch}.trainer `expr ${epoch} \* 2` 4
 train 3 ${result_dir}/encdec2_epoch_`expr ${epoch} \* 2`.trainer `expr ${epoch} \* 3` 4
 train 4 ${result_dir}/encdec3_epoch_`expr ${epoch} \* 3`.trainer `expr ${epoch} \* 4` 4
 finetune 4 ${result_dir}/encdec4_epoch_`expr ${epoch} \* 4`.trainer `expr ${epoch} \* 5` 4

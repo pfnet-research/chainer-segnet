@@ -64,22 +64,51 @@ python experiments/batch_evaluate.py
 
 # Results
 
-The below table shows the evaluation results. Note that **STD** and **CW** stand for standardization (mean subtraction and stddev division) and class weight (per-class weighting for the softmax cross entropy during training), respectively. **DA** stands for data augmentation (random rotation, flipping LR, shift jittering, and scale jittering). `lr=0.01dc` means the learning rate was dropped starting from 0.01. See the actual learning rate schedule in `experiments/train_end2end_msgd.sh`.
+The below table shows the evaluation results. Each column means:
 
-| Model                           | Opt                         | Building | Tree     | Sky      | Car      | SignSymbol | Road     | Pedestrian | Fence    | Pole     | Pavement | Bicyclist | Class avg. | Global avg. | IoU      |
-|:-------------------------------:|:---------------------------:|:--------:|:--------:|:--------:|:--------:|:----------:|:--------:|:----------:|:--------:|:--------:|:--------:|:---------:|:----------:|:-----------:|:--------:|
-| SegNet - 4 layer (from paper)   | L-BFGS                      |   75.0   | **84.6** |   91.2   |   82.7   |   36.9     |   93.3   |   55.0     |   37.5   |   44.8   |   74.1   |   16.0    |   62.9     |   84.3      |   N/A    |
-| chainer-segnet                  | Adam (alpha=0.0001)         |   76.6   |   75.3   |   93.9   | **88.7** |   51.5     |   91.6   |   77.5     |   53.1   |   57.2   |   73.7   |   46.8    |   65.5     |   82.9      |   47.3   |
-| chainer-segnet                  | MomentumSGD (lr=0.0001)     |   72.6   |   64.3   |   93.9   |   88.2   |   52.1     |   90.0   |   78.3     | **58.1** |   55.8   |   69.5   | **53.0**  |   64.7     |   79.8      |   43.4   |
-| chainer-segnet (No DA)          | Adam (alpha=0.0001)         |   85.9   |   64.5   |   95.3   |   77.8   |   19.5     |   96.0   |   45.5     |   39.3   |   31.6   |   67.0   |   26.6    |   54.1     |   83.3      |   43.7   |
-| chainer-segnet (No STD)         | Adam (alpha=0.0001)         |   74.4   |   75.8   |   94.1   |   88.6   | **60.2**   |   90.8   |   74.0     |   52.5   | **59.6** | **85.9** |   46.5    | **66.9**   |   83.5      |   47.6   |
-| chainer-segnet (No CW)          | Adam (alpha=0.0001)         |   88.7   |   73.4   | **96.6** |   82.4   |   42.9     | **96.8** |   45.4     |   35.4   |   29.7   |   63.1   |   41.3    |   58.0     |   85.5      |   48.4   |
-| chainer-segnet (No STD, No CW)  | Adam (alpha=0.0001)         | **90.2** |   81.0   |   96.4   |   87.1   |   28.2     |   96.1   |   47.3     |   33.5   |   25.6   |   68.5   |   32.1    |   57.2     | **87.0**    | **49.2** |
-| chainer-segnet (End2End)        | Adam (alpha=0.0001)         |   77.6   |   68.7   |   92.5   |   84.6   |   47.3     |   89.5   |   74.1     |   43.0   |   54.7   |   85.1   |   33.6    |   62.6     |   82.3      |   45.8   |
-| chainer-segnet (End2End)        | MomentumSGD (lr=0.01dc)     |   75.3   |   67.7   |   92.3   |   86.8   |   53.6     |   93.7   |   62.9     |   29.5   |   51.2   |   68.0   |   41.7    |   60.2     |   80.9      |   43.9   |
-| chainer-segnet (End2End, No DA) | Adam (alpha=0.0001)         |   86.8   |   56.9   |   93.4   |   72.4   |   9.60     |   95.5   |   24.4     |   25.2   |   24.4   |   58.5   |   16.8    |   47.0     |   80.6      |   38.4   |
-| chainer-segnet (End2End, No STD, No CW) | Adam (alpha=0.0001) |   89.5   |   74.8   |   95.9   |   88.5   |   27.3     |   95.4   |   44.3     |   28.8   |   28.2   |   76.4   |   37.9    |   57.3     |   86.6      |   48.7   |
-| chainer-segnet (OrigCW)         | Adam (alpha=0.0001)         |   74.5   |   67.6   |   91.3   |   83.9   |   64.5     |   91.5   | **82.7**   |   52.2   |   57.5   |   69.0   |   46.4    |   65.1     |   80.5      |   44.7   |
+- **Class weight**: It means the weight for softmax cross entropy. If class weight calculated from training labels using `lib/calc_mean.py`, it shows `Yes`. If a set of class weights copied from the original implementation (from a caffe protobuf file) are used, it shows `Original`. If no class weight is used, it shows `No`.
+- **Standardization**: It means mean subtraction and stddev division.
+- **Data Aug.**: Data augmentation by random rotation and flipping left/right, and random translation and scale jittering.
+- **# conv channels**: The number of convolution filters used for all convolutional layers in the SegNet model.
+- **End-to-End**: `Pairwise` means the way to train the SegNet in encoder-decoder pairwise manner. `Finetune` means that the model was finetuned after the pairwise training of encoder-decorder pairs in end-to-end manner. `End-to-End` means that the model was trained in end-to-end manner from the beggining to the end.
+
+**Please find the more detailed results here: [`experiments/README.md`](https://github.com/mitmul/chainer-segnet/tree/master/experiments/README.md)**
+
+| Model | Opt | Class weight | Standardization | Data Aug. | # conv channels | End-to-End | Class avg. | Global avg. |
+|:-----:|:---:|:------------:|:---------------:|:---------:|:---------------:|:----------:|:-----------:|
+| SegNet - 4 layer (from paper) | L-BFGS   | Original | ?   | ?   | 64  | Pairwise   | 62.9 | 84.3 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 128 | Pairwise   | **69.8** | 86.0 |
+| chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 64  | Pairwise   | 68.6 | 82.2 |
+| chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 64  | Finetune   | 68.5 | 83.3 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | No  | Yes | 64  | Pairwise   | 68.0 | 82.3 |
+| chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 128 | Pairwise   | 67.3 | 86.5 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 128 | Finetune   | 67.3 | 86.4 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | No  | Yes | 64  | Finetune   | 66.9 | 83.5 |
+| chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 128 | Finetune   | 66.3 | 86.2 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 64  | Finetune   | 65.5 | 82.9 |
+| chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 64  | Finetune   | 65.1 | 80.5 |
+| chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 64  | Pairwise   | 64.8 | 79.8 |
+| chainer-segnet | MomentumSGD (lr=0.0001) | Yes      | Yes | Yes | 64  | Pairwise   | 64.8 | 76.9 |
+| chainer-segnet | MomentumSGD (lr=0.0001) | Yes      | Yes | Yes | 64  | Finetune   | 64.7 | 79.8 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 64  | Pairwise   | 64.4 | 81.1 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 64  | End-to-End | 62.6 | 82.3 |
+| chainer-segnet | Adam (alpha=0.0001)     | No       | No  | Yes | 64  | Pairwise   | 58.9 | **86.9** |
+| chainer-segnet | Adam (alpha=0.0001)     | No       | Yes | Yes | 64  | Finetune   | 58.0 | 85.5 |
+| chainer-segnet | Adam (alpha=0.0001)     | No       | No  | Yes | 64  | Finetune   | 57.2 | 87.0 |
+| chainer-segnet | Adam (alpha=0.0001)     | No       | Yes | Yes | 64  | Pairwise   | 56.3 | 85.8 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | No  | 64  | Pairwise   | 56.2 | 83.9 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | No  | 64  | Finetune   | 54.1 | 83.3 |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | No  | 64  | End-to-End | 47.0 | 80.6 |
+
+## Discussion
+
+- Several models exceeded the accuracy described in the original paper.
+- Larger number of channels leads better results.
+- The original class weights seem to be better than the ones calculated using `lib/calc_mean.py` in this repository.
+- Finetuning the model after enc-dec pairwise training improves global average accuracy but it decreases the class average accuracy in many cases.
+- Pairwise (w/ or w/o finetuning) is almost always better than completely end-to-end training.
+- Data augmentation is necessary.
+- Standardization decreases both accuracy (class avg. and global avg.) in several cases.
 
 # Reference
 
