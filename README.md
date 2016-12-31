@@ -75,7 +75,7 @@ The below table shows the evaluation results. Each column means:
 **Please find the more detailed results here: [`experiments/README.md`](https://github.com/mitmul/chainer-segnet/tree/master/experiments/README.md)**
 
 | Model | Opt | Class weight | Standardization | Data Aug. | # conv channels | End-to-End | Class avg. | Global avg. |
-|:-----:|:---:|:------------:|:---------------:|:---------:|:---------------:|:----------:|:-----------:|
+|:-----:|:---:|:------------:|:---------------:|:---------:|:---------------:|:----------:|:----------:|:-----------:|
 | SegNet - 4 layer (from paper) | L-BFGS   | Original | ?   | ?   | 64  | Pairwise   | 62.9 | 84.3 |
 | chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 128 | Pairwise   | **69.8** | 86.0 |
 | chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 64  | Pairwise   | 68.6 | 82.2 |

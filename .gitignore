@@ -2,6 +2,7 @@
 .sync-config.cson
 data
 results
+*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
