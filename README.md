@@ -74,12 +74,12 @@ The below table shows the evaluation results. Each column means:
 
 **Please find the more detailed results here: [`experiments/README.md`](https://github.com/mitmul/chainer-segnet/tree/master/experiments/README.md)**
 
-__The bold style means that it better than the paper result, and underlined one means the top score in this table.__
+The bold numbers are better than the paper result, and bold and italic ones are the top scores in this table.
 
 | Model | Opt | Class weight | Standardization | Data Aug. | # conv channels | End-to-End | Class avg. | Global avg. |
 |:-----:|:---:|:------------:|:---------------:|:---------:|:---------------:|:----------:|:----------:|:-----------:|
 | SegNet - 4 layer (from paper) | L-BFGS   | Original | ?   | ?   | 64  | Pairwise   | 62.9 | 84.3 |
-| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 128 | Pairwise   | __**69.8**__ | **86.0** |
+| chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 128 | Pairwise   | _**69.8**_ | **86.0** |
 | chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 64  | Pairwise   | **68.6** | 82.2 |
 | chainer-segnet | Adam (alpha=0.0001)     | Original | Yes | Yes | 64  | Finetune   | **68.5** | 83.3 |
 | chainer-segnet | Adam (alpha=0.0001)     | Yes      | No  | Yes | 64  | Pairwise   | **68.0** | 82.3 |
@@ -94,7 +94,7 @@ __The bold style means that it better than the paper result, and underlined one 
 | chainer-segnet | MomentumSGD (lr=0.0001) | Yes      | Yes | Yes | 64  | Finetune   | **64.7** | 79.8 |
 | chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 64  | Pairwise   | **64.4** | 81.1 |
 | chainer-segnet | Adam (alpha=0.0001)     | Yes      | Yes | Yes | 64  | End-to-End | 62.6 | 82.3 |
-| chainer-segnet | Adam (alpha=0.0001)     | No       | No  | Yes | 64  | Pairwise   | 58.9 | __**86.9**__ |
+| chainer-segnet | Adam (alpha=0.0001)     | No       | No  | Yes | 64  | Pairwise   | 58.9 | _**86.9**_ |
 | chainer-segnet | Adam (alpha=0.0001)     | No       | Yes | Yes | 64  | Finetune   | 58.0 | **85.5** |
 | chainer-segnet | Adam (alpha=0.0001)     | No       | No  | Yes | 64  | Finetune   | 57.2 | **87.0** |
 | chainer-segnet | Adam (alpha=0.0001)     | No       | Yes | Yes | 64  | Pairwise   | 56.3 | **85.8** |
