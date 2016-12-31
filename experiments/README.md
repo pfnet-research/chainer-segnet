@@ -103,6 +103,7 @@
 
 - Global acc = 0.8635421968486442
 - Class average acc = 0.672926891245397
+
 | Building | Tree | Sky | Car | SignSymbol | Road | Pedestrian | Fence | Pole | Pavement | Bicyclist | Class avg. | Global avg. | IoU |
 |:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | 81.1 | 82.7 | 95.1 | 86.4 | 53.8 | 94.9 | 71.0 | 49.0 | 55.4 | 78.9 | 59.4 | 67.3 | 86.4 | 52.1 |
