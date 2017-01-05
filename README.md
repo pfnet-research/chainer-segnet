@@ -112,6 +112,10 @@ The bold numbers are better than the paper result, and bold and italic ones are 
 - Data augmentation is necessary.
 - Standardization decreases both accuracy (class avg. and global avg.) in several cases.
 
+# License
+
+MIT License (see LICENSE file).
+
 # Reference
 
 > Vijay Badrinarayanan, Alex Kendall and Roberto Cipolla "SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation." arXiv preprint arXiv:1511.00561, 2015\. [PDF](http://arxiv.org/abs/1511.00561)
